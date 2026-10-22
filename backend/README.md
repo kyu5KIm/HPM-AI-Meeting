@@ -78,6 +78,7 @@ VITE_API_BASE_URL=http://localhost:8000/api
 | `RUNPOD_STT_BASE_URL` | STT 서버 주소 | `http://localhost:8502` |
 | `RUNPOD_OCR_BASE_URL` | OCR 서버 주소 | `http://localhost:8501` |
 | `RUNPOD_PARSED_BASE_URL` | parsed 문서 ingest 서버 주소 | `http://localhost:8503` |
+| `DOCUMENT_ALLOWED_EXTENSIONS` | 내부 문서 업로드 허용 확장자. HWP를 못 읽는 AI 서버(`ai/parsed`)에 연결하면 `.pdf,.docx,.txt`로 줄인다 | `.pdf,.hwp,.hwpx,.docx,.txt` |
 | `RAG_SERVER_URL` | 챗봇 API 주소 | `http://localhost:8504/chat` |
 | `JIRA_BASE_URL` | Jira base URL | `https://your-domain.atlassian.net` |
 | `JIRA_API_TOKEN` | Jira API token | secret |
@@ -114,6 +115,7 @@ RUNPOD_CORE_BASE_URL=http://localhost:8504
 RUNPOD_STT_BASE_URL=http://localhost:8502
 RUNPOD_OCR_BASE_URL=http://localhost:8501
 RUNPOD_PARSED_BASE_URL=http://localhost:8503
+DOCUMENT_ALLOWED_EXTENSIONS=.pdf,.hwp,.hwpx,.docx,.txt
 RAG_SERVER_URL=http://localhost:8504/chat
 
 # Jira REST / OAuth
@@ -250,3 +252,15 @@ python manage.py runserver 0.0.0.0:8000
 - 운영에서는 `DEBUG=False`, 안전한 `SECRET_KEY`, 제한된 `ALLOWED_HOSTS` 설정이 필요합니다.
 - AI 서버 URL이 비어 있으면 회의록, STT, 문서 ingest, 챗봇 기능이 실패할 수 있습니다.
 - S3 bucket 이름이 있으면 Django storage backend가 S3로 전환됩니다.
+
+## RAG 재적재
+
+임베딩 모델이나 청킹을 바꾼 뒤에는 내부 문서와 회의록을 새 Qdrant 컬렉션에 다시 적재합니다.
+
+```bash
+python manage.py reingest_rag --dry-run          # 대상 확인
+python manage.py reingest_rag                    # 전체 프로젝트
+python manage.py reingest_rag --project 3 --skip-meetings
+```
+
+`RUNPOD_PARSED_BASE_URL`(문서)와 `RUNPOD_CORE_BASE_URL`(회의록)이 새 설정으로 실행 중인 AI 서버를 가리켜야 합니다.

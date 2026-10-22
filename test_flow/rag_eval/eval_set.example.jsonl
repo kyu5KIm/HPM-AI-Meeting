@@ -1,0 +1,7 @@
+# 한 줄에 질문 하나. relevant의 조건 하나가 정답 근거 하나다.
+# source: 파일명 일부, page: 페이지 번호, contains: 근거 청크에 들어 있어야 하는 문구. 셋 중 하나 이상 지정.
+# 청크 ID는 재적재마다 바뀌므로 쓰지 않는다.
+{"id": "doc-001", "project_id": "1", "question": "올해 마케팅 예산 총액은 얼마인가요?", "relevant": [{"source": "2026_사업계획", "page": 3, "contains": "마케팅 예산"}]}
+{"id": "doc-002", "project_id": "1", "question": "보안 점검은 어느 주기로 하나요?", "relevant": [{"source": "보안정책", "contains": "분기"}]}
+{"id": "mtg-001", "project_id": "1", "scope": "meeting", "question": "지난 스프린트 회의에서 결정된 배포일은?", "relevant": [{"source": "이전회의록", "contains": "배포일"}]}
+{"id": "mix-001", "project_id": "1", "question": "Jira 연동 담당자는 누구인가요?", "relevant": [{"contains": "Jira"}, {"source": "이전회의록", "contains": "담당자"}]}
