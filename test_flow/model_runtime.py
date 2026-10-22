@@ -19,6 +19,7 @@ from config import (
     EMBEDDING_MODEL_ID,
     EMBEDDING_PROVIDER,
     MAX_NEW_TOKENS,
+    OCR_BACKEND,
     OCR_MAX_PDF_PAGES,
     OCR_MIN_DIRECT_TEXT_CHARS,
     OCR_MODEL_ID,
@@ -410,6 +411,22 @@ def _render_pdf_pages(content: bytes) -> list[tuple[str, bytes]]:
 
 
 def ocr_file_bytes(file_bytes: bytes, filename: str, content_type: str = "") -> str:
+    """파일에서 텍스트를 뽑는다. 기본은 kordoc(로컬 OCR + 부족한 페이지만 Luna)이고, 실패하면 OpenAI 경로로 넘어간다."""
+    ext = os.path.splitext(filename or "")[1].lower()
+    if OCR_BACKEND == "kordoc" and ext not in {".txt", ".gif", ".bmp"}:
+        from kordoc_parser import KORDOC_EXTENSIONS, KordocError, KordocUnavailable, extract_text
+
+        if ext in KORDOC_EXTENSIONS:
+            try:
+                text = extract_text(file_bytes, filename)
+                if text.strip():
+                    return text
+            except (KordocUnavailable, KordocError) as exc:
+                print(f"[ocr] kordoc unavailable, falling back to OpenAI OCR: {exc}")
+    return _openai_ocr_file_bytes(file_bytes, filename, content_type)
+
+
+def _openai_ocr_file_bytes(file_bytes: bytes, filename: str, content_type: str = "") -> str:
     ext = os.path.splitext(filename or "")[1].lower()
     mime = _content_type(filename, content_type)
     if ext == ".txt" or mime.startswith("text/"):
