@@ -74,6 +74,15 @@ RAG_SERVER_URL=http://localhost:8500/chat
 
 입출력 예시는 [API_SPEC.md](./API_SPEC.md)를 확인하면 됩니다. 프롬프트 구조는 [PROMPTS.md](./PROMPTS.md)와 [prompts.py](./prompts.py)에 정리했습니다.
 
+## 긴 회의 녹음 (STT)
+
+OpenAI 전사 API의 파일당 25MB·요청당 길이 제한을 서버에서 처리합니다(`stt_long_audio.py`, ffmpeg 필요).
+
+1. 녹음을 모노·16kHz·32kbps mp3로 줄입니다(1시간 약 14MB).
+2. 그래도 크거나 `STT_SEGMENT_SEC`(기본 20분)보다 길면, 목표 지점 ±30초 안의 무음 가운데에서 자르고 조각끼리 4초 겹칩니다.
+3. 조각별 타임스탬프를 원래 시간으로 보정하고, 겹친 구간은 경계 이전에 시작한 발화는 앞 조각, 이후는 뒤 조각 것만 남깁니다.
+4. 앞 조각에서 화자별 음성 샘플(2~10초)을 뽑아 다음 조각에 `known_speaker_references`로 넘겨 같은 사람에게 같은 이름(`SPEAKER_00`..)을 붙입니다. 참고 화자는 최대 4명이라 5명 이상이면 다섯 번째부터는 조각마다 새 이름이 붙을 수 있습니다.
+
 ## 문서 파싱
 
 업로드 문서는 형식과 관계없이 `kordoc_parser.py` → 부모-자식 청커(`internal_docs/chunker.py`)를 거칩니다.

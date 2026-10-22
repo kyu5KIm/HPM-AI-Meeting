@@ -257,6 +257,52 @@ def _format_timestamp(seconds: float) -> str:
     return f"{m:02d}:{s:02d}"
 
 
+def _transcribe_once(
+    audio_path: str,
+    language: str | None,
+    diarize: bool,
+    known_names: list[str] | None = None,
+    known_references: list[str] | None = None,
+) -> tuple[list[dict[str, Any]], str, str | None]:
+    """OpenAI 전사 API를 한 번 호출한다. 시간은 이 파일 기준(초)이다."""
+    with open(audio_path, "rb") as audio_file:
+        kwargs: dict[str, Any] = {"file": audio_file, "model": STT_MODEL_ID}
+        if language:
+            kwargs["language"] = language
+        if diarize and "diarize" in STT_MODEL_ID:
+            kwargs["response_format"] = "diarized_json"
+            kwargs["chunking_strategy"] = "auto"
+            if known_names and known_references:
+                # 앞 조각에서 뽑은 화자별 음성 샘플(2~10초, 최대 4명)로 같은 사람에게 같은 이름을 붙인다.
+                kwargs["extra_body"] = {
+                    "known_speaker_names": known_names,
+                    "known_speaker_references": known_references,
+                }
+        else:
+            kwargs["response_format"] = "verbose_json"
+        transcript = _client().audio.transcriptions.create(**kwargs)
+
+    payload = _object_to_dict(transcript)
+    segments: list[dict[str, Any]] = []
+    for item in payload.get("segments") or []:
+        seg = _object_to_dict(item)
+        text = str(seg.get("text") or seg.get("transcript") or "").strip()
+        if not text:
+            continue
+        speaker = seg.get("speaker") or seg.get("speaker_id") or seg.get("speaker_label") or seg.get("label")
+        end = seg.get("end") if seg.get("end") is not None else seg.get("end_time")
+        segments.append(
+            {
+                **seg,
+                "speaker": str(speaker) if speaker is not None else None,
+                "start": float(seg.get("start") or seg.get("start_time") or 0),
+                "end": float(end) if end is not None else None,
+                "text": text,
+            }
+        )
+    return segments, str(payload.get("text") or "").strip(), payload.get("language")
+
+
 def transcribe_audio_file(
     audio_path: str,
     *,
@@ -268,56 +314,33 @@ def transcribe_audio_file(
 ) -> dict[str, Any]:
     _ = (batch_size, align, hf_token)
     load_stt_model()
-    with open(audio_path, "rb") as audio_file:
-        kwargs: dict[str, Any] = {"file": audio_file, "model": STT_MODEL_ID}
-        if language:
-            kwargs["language"] = language
-        if diarize and "diarize" in STT_MODEL_ID:
-            kwargs["response_format"] = "diarized_json"
-            kwargs["chunking_strategy"] = "auto"
-        else:
-            kwargs["response_format"] = "verbose_json"
-        transcript = _client().audio.transcriptions.create(**kwargs)
+    from stt_long_audio import transcribe_long_audio
 
-    payload = _object_to_dict(transcript)
-    raw_segments = payload.get("segments") or []
-    normalized_segments: list[dict[str, Any]] = []
-    for index, item in enumerate(raw_segments):
-        seg = _object_to_dict(item)
-        text = str(seg.get("text") or seg.get("transcript") or "").strip()
-        if not text:
-            continue
-        speaker = (
-            seg.get("speaker")
-            or seg.get("speaker_id")
-            or seg.get("speaker_label")
-            or seg.get("label")
-            or f"SPEAKER_{index:02d}"
-        )
-        start = float(seg.get("start") or seg.get("start_time") or 0)
-        normalized_segments.append(
-            {
-                **seg,
-                "speaker": str(speaker),
-                "start": start,
-                "time": f"[{_format_timestamp(start)}]",
-                "text": text,
-                "content": text,
-            }
-        )
-    text = "\n".join(
-        f"{segment['speaker']}: {segment['text']}"
-        for segment in normalized_segments
-    ).strip()
+    # 25MB·길이 제한을 넘는 녹음은 압축·분할해서 전사하고 하나로 합친다.
+    result = transcribe_long_audio(
+        audio_path,
+        lambda path, names, refs: _transcribe_once(path, language, diarize, names, refs),
+        diarize=diarize,
+    )
+    normalized_segments = [
+        {
+            **seg,
+            "time": f"[{_format_timestamp(seg['start'])}]",
+            "content": seg["text"],
+        }
+        for seg in result["segments"]
+    ]
+    text = "\n".join(f"{segment['speaker']}: {segment['text']}" for segment in normalized_segments).strip()
     if not text:
-        text = str(payload.get("text") or "").strip()
+        text = str(result.get("text") or "").strip()
     return {
         "text": text,
-        "language": payload.get("language") or language,
+        "language": result.get("language") or language,
         "segments": normalized_segments,
         "utterances": normalized_segments,
         "device": "api",
         "compute_type": "api",
+        "chunks": result.get("chunks", 1),
     }
 
 
