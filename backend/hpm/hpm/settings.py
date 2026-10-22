@@ -122,6 +122,14 @@ RUNPOD_STT_BASE_URL = os.getenv("RUNPOD_STT_BASE_URL", os.getenv("RUNPOD_BASE_UR
 RUNPOD_OCR_BASE_URL = os.getenv("RUNPOD_OCR_BASE_URL", "")
 RUNPOD_PARSED_BASE_URL = os.getenv("RUNPOD_PARSED_BASE_URL", os.getenv("RUNPOD_PARSERD_BASE_URL", ""))
 
+# 내부 문서 업로드 허용 확장자. test_flow(kordoc)는 HWP·HWPX를 읽는다.
+# HWP를 지원하지 않는 AI 서버(ai/parsed)에 연결할 때는 ".pdf,.docx,.txt"로 줄인다.
+DOCUMENT_ALLOWED_EXTENSIONS = {
+    ext.strip().lower() if ext.strip().startswith(".") else f".{ext.strip().lower()}"
+    for ext in os.getenv("DOCUMENT_ALLOWED_EXTENSIONS", ".pdf,.hwp,.hwpx,.docx,.txt").split(",")
+    if ext.strip()
+}
+
 RUNPOD_CHAT_URL = RUNPOD_CORE_BASE_URL
 RUNPOD_BASE_URL = RUNPOD_CORE_BASE_URL
 RUNPOD_MINUTES_URL = f"{RUNPOD_CORE_BASE_URL}/generate"
