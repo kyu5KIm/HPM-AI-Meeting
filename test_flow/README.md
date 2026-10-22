@@ -50,6 +50,17 @@ C:\Users\Playdata\miniconda3\envs\hpm_test_1\python.exe -m uvicorn app:app --hos
 curl http://localhost:8500/health
 ```
 
+## 테스트
+
+```bash
+cd test_flow
+pip install -r requirements.txt -r requirements-dev.txt
+cd kordoc && npm ci && cd ..   # kordoc 통합 테스트용 (없으면 해당 테스트는 건너뜀)
+python -m pytest -q tests
+```
+
+KURE·OpenAI API는 테스트 안에서 로컬 가짜 서버로, Qdrant는 메모리 모드로 대신하므로 API 키 없이 돌아갑니다. ffmpeg가 있으면 긴 녹음 분할 테스트도 실행됩니다.
+
 ## Django 연결
 
 기존에는 RunPod/FastAPI가 기능별로 나뉘어 있었지만, `test_flow`에서는 모두 같은 서버를 바라보게 하면 됩니다.
