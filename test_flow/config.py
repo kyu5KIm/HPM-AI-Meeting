@@ -61,9 +61,12 @@ TEXT_GGUF_REPO = os.getenv("TEXT_GGUF_REPO", "unused-openai")
 TEXT_GGUF_FILENAME = os.getenv("TEXT_GGUF_FILENAME", "unused-openai")
 TEXT_MODEL_ID = force_env(
     "TEXT_MODEL_ID",
-    os.getenv("TEST_FLOW_LLM_MODEL_ID") or os.getenv("OPENAI_TEXT_MODEL_ID") or "gpt-4.1-mini",
+    os.getenv("TEST_FLOW_LLM_MODEL_ID") or os.getenv("OPENAI_TEXT_MODEL_ID") or "gpt-5.6-luna",
 )
 force_env("LLM_MODEL_ID", TEXT_MODEL_ID)
+# GPT-5 계열은 추론 모델이다. none이면 temperature를 쓸 수 있고, 그 외에는 추론 토큰이 출력 한도에 포함된다.
+TEXT_REASONING_EFFORT = os.getenv("TEST_FLOW_REASONING_EFFORT", "low").strip().lower()
+TEXT_REASONING_EXTRA_TOKENS = int(os.getenv("TEST_FLOW_REASONING_EXTRA_TOKENS", "4096"))
 TEXT_VLLM_BASE_URL = os.getenv("TEXT_VLLM_BASE_URL", "")
 TEXT_VLLM_API_KEY = os.getenv("TEXT_VLLM_API_KEY", "")
 TEXT_VLLM_TIMEOUT_SEC = float(os.getenv("TEXT_VLLM_TIMEOUT_SEC", str(OPENAI_TIMEOUT_SEC)))
@@ -113,14 +116,18 @@ PRELOAD_EMBEDDING_MODEL = os.getenv("PRELOAD_EMBEDDING_MODEL", "false").lower() 
 
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY") or None
-QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "hpm_openai_chunks")
+# 임베딩 모델이 바뀌면 벡터 차원이 달라지므로 컬렉션 이름도 모델별로 나눈다.
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "hpm_kure_chunks")
 QDRANT_COLLECTION_PROJECT_MODE = os.getenv("QDRANT_COLLECTION_PROJECT_MODE", "true").lower() == "true"
-QDRANT_COLLECTION_PREFIX = os.getenv("QDRANT_COLLECTION_PREFIX", "hpm_project_openai")
+QDRANT_COLLECTION_PREFIX = os.getenv("QDRANT_COLLECTION_PREFIX", "hpm_project_kure")
 
-EMBEDDING_PROVIDER = force_env("EMBEDDING_PROVIDER", os.getenv("TEST_FLOW_EMBEDDING_PROVIDER", "openai"))
+EMBEDDING_PROVIDER = force_env("EMBEDDING_PROVIDER", os.getenv("TEST_FLOW_EMBEDDING_PROVIDER", "kure"))
+_DEFAULT_EMBEDDING_MODEL = {"kure": "kure-v3", "openai": "text-embedding-3-small"}.get(
+    EMBEDDING_PROVIDER, "nlpai-lab/KURE-v3"
+)
 EMBEDDING_MODEL_ID = force_env(
     "EMBEDDING_MODEL_ID",
-    os.getenv("TEST_FLOW_EMBEDDING_MODEL_ID") or os.getenv("OPENAI_EMBEDDING_MODEL_ID") or "text-embedding-3-small",
+    os.getenv("TEST_FLOW_EMBEDDING_MODEL_ID") or os.getenv("OPENAI_EMBEDDING_MODEL_ID") or _DEFAULT_EMBEDDING_MODEL,
 )
 EMBEDDING_DEVICE = force_env("EMBEDDING_DEVICE", os.getenv("TEST_FLOW_EMBEDDING_DEVICE", "api"))
 force_env("RAG_EMBEDDING_PROVIDER", os.getenv("TEST_FLOW_RAG_EMBEDDING_PROVIDER") or EMBEDDING_PROVIDER)
@@ -128,8 +135,19 @@ force_env("RAG_EMBEDDING_MODEL", os.getenv("TEST_FLOW_RAG_EMBEDDING_MODEL") or E
 force_env("RAG_ANSWER_PROVIDER", os.getenv("TEST_FLOW_RAG_ANSWER_PROVIDER", "openai"))
 force_env("RAG_ANSWER_MODEL", os.getenv("TEST_FLOW_RAG_ANSWER_MODEL") or TEXT_MODEL_ID)
 EMBEDDING_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "16"))
-EMBEDDING_DIMENSIONS = os.getenv("EMBEDDING_DIMENSIONS")
+# KURE-v3는 2048차원이지만 1024로 줄여도 점수의 99%를 유지한다(Matryoshka).
+EMBEDDING_DIMENSIONS = (os.getenv("EMBEDDING_DIMENSIONS") or "").strip() or ("1024" if EMBEDDING_PROVIDER == "kure" else "")
 EMBEDDING_DIMENSIONS_INT = int(EMBEDDING_DIMENSIONS) if EMBEDDING_DIMENSIONS else None
+# 적재(model_runtime)와 검색(retrieval)이 반드시 같은 차원을 쓰도록 맞춘다.
+force_env("EMBEDDING_DIMENSIONS", EMBEDDING_DIMENSIONS)
+force_env("RAG_EMBEDDING_DIMENSIONS", os.getenv("TEST_FLOW_RAG_EMBEDDING_DIMENSIONS") or EMBEDDING_DIMENSIONS)
+
+RERANK_PROVIDER = force_env("RERANK_PROVIDER", os.getenv("TEST_FLOW_RERANK_PROVIDER", "kure").strip().lower())
+RERANK_MODEL = force_env(
+    "RERANK_MODEL",
+    os.getenv("TEST_FLOW_RERANK_MODEL")
+    or ("kure-reranker-nano" if RERANK_PROVIDER == "kure" else os.getenv("COHERE_RERANK_MODEL", "rerank-v3.5")),
+)
 
 CHAT_RAG_TOP_K = int(os.getenv("CHAT_RAG_TOP_K", "5"))
 CHAT_RAG_MAX_CONTEXT_CHARS = int(os.getenv("CHAT_RAG_MAX_CONTEXT_CHARS", "6000"))

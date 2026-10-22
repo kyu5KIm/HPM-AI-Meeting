@@ -14,8 +14,10 @@ from typing import Any
 
 from config import (
     EMBEDDING_BATCH_SIZE,
+    EMBEDDING_DEVICE,
     EMBEDDING_DIMENSIONS_INT,
     EMBEDDING_MODEL_ID,
+    EMBEDDING_PROVIDER,
     MAX_NEW_TOKENS,
     OCR_MAX_PDF_PAGES,
     OCR_MIN_DIRECT_TEXT_CHARS,
@@ -29,6 +31,8 @@ from config import (
     STT_DEVICE,
     STT_MODEL_ID,
     TEXT_MODEL_ID,
+    TEXT_REASONING_EFFORT,
+    TEXT_REASONING_EXTRA_TOKENS,
 )
 
 
@@ -105,14 +109,55 @@ def load_stt_model() -> SttBundle:
     return stt_bundle
 
 
+UNSUPPORTED_RETRY_PARAMS = ("temperature", "reasoning_effort")
+
+
+def is_reasoning_model(model: str) -> bool:
+    name = str(model or "").lower().split("/")[-1]
+    return name.startswith(("gpt-5", "gpt-6", "o1", "o3", "o4"))
+
+
+def chat_completion_kwargs(
+    model: str,
+    max_new_tokens: int,
+    *,
+    temperature: float = 0,
+    reasoning_effort: str | None = None,
+) -> dict[str, Any]:
+    """모델 계열에 맞는 생성 파라미터를 만든다.
+
+    GPT-5 계열(추론 모델)은 max_tokens 대신 max_completion_tokens를 쓰고, 추론 토큰도 그 한도에 포함된다.
+    temperature는 reasoning_effort=none일 때만 적용한다.
+    """
+    if not is_reasoning_model(model):
+        return {"temperature": temperature, "max_tokens": max_new_tokens}
+    effort = (reasoning_effort or TEXT_REASONING_EFFORT or "low").lower()
+    kwargs: dict[str, Any] = {"reasoning_effort": effort}
+    if effort == "none":
+        kwargs["max_completion_tokens"] = max_new_tokens
+        kwargs["temperature"] = temperature
+    else:
+        kwargs["max_completion_tokens"] = max_new_tokens + max(0, TEXT_REASONING_EXTRA_TOKENS)
+    return kwargs
+
+
+def create_chat_completion(client: Any, model: str, messages: list[Any], max_new_tokens: int, **options: Any) -> Any:
+    kwargs = chat_completion_kwargs(model, max_new_tokens, **options)
+    try:
+        return client.chat.completions.create(model=model, messages=messages, **kwargs)
+    except Exception as exc:
+        # 모델이 temperature나 reasoning_effort를 받지 않으면 해당 파라미터를 빼고 한 번만 다시 시도한다.
+        message = str(exc).lower()
+        rejected = any(word in message for word in ("unsupported", "not supported", "does not support", "invalid"))
+        retry = {key: value for key, value in kwargs.items() if not (rejected and key in UNSUPPORTED_RETRY_PARAMS and key in message)}
+        if retry == kwargs:
+            raise
+        return client.chat.completions.create(model=model, messages=messages, **retry)
+
+
 def generate_text(messages: list[dict[str, str]], *, max_new_tokens: int = MAX_NEW_TOKENS) -> str:
     bundle = load_text_model()
-    response = bundle.llm.chat.completions.create(
-        model=TEXT_MODEL_ID,
-        messages=messages,
-        temperature=0,
-        max_tokens=max_new_tokens,
-    )
+    response = create_chat_completion(bundle.llm, TEXT_MODEL_ID, messages, max_new_tokens)
     return str(response.choices[0].message.content or "").strip()
 
 
@@ -147,32 +192,45 @@ def generate_json(messages: list[dict[str, str]], *, max_new_tokens: int = MAX_N
         return extract_json(generate_text(repair_messages, max_new_tokens=max_new_tokens))
 
 
-def embed_texts(texts: list[str]) -> list[list[float]]:
+_document_embedder: Any = None
+
+
+def _embedder() -> Any:
+    """검색(retrieval)과 같은 임베딩 구현을 써서 적재와 검색의 벡터가 어긋나지 않게 한다."""
+    global _document_embedder
+    if _document_embedder is None:
+        from internal_docs.rag.embeddings import make_embedder
+
+        _document_embedder = make_embedder(
+            provider=EMBEDDING_PROVIDER,
+            model=EMBEDDING_MODEL_ID,
+            dimensions=EMBEDDING_DIMENSIONS_INT,
+            device=EMBEDDING_DEVICE if EMBEDDING_DEVICE != "api" else "auto",
+        )
+    return _document_embedder
+
+
+def embed_texts(texts: list[str], input_type: str = "document") -> list[list[float]]:
     clean_texts = [str(text or "") for text in texts]
     if not clean_texts:
         return []
+    embedder = _embedder()
+    if embedder.provider == "kure":
+        # KURE 클라이언트가 8개 단위 분할, 속도 조절, 429 재시도를 직접 처리한다.
+        return embedder.embed_texts(clean_texts, input_type=input_type)
     vectors: list[list[float]] = []
-    client = _client()
     for start in range(0, len(clean_texts), EMBEDDING_BATCH_SIZE):
         batch = clean_texts[start : start + EMBEDDING_BATCH_SIZE]
-        kwargs: dict[str, Any] = {"model": EMBEDDING_MODEL_ID, "input": batch}
-        if EMBEDDING_DIMENSIONS_INT:
-            kwargs["dimensions"] = EMBEDDING_DIMENSIONS_INT
-        last_exc: Exception | None = None
         for attempt in range(1, OPENAI_EMBED_MAX_RETRIES + 1):
             try:
-                response = client.embeddings.create(**kwargs)
+                vectors.extend(embedder.embed_texts(batch, input_type=input_type))
                 break
             except Exception as exc:
-                last_exc = exc
                 if attempt >= OPENAI_EMBED_MAX_RETRIES:
                     raise RuntimeError(
-                        f"OpenAI embedding request failed after {OPENAI_EMBED_MAX_RETRIES} attempts: {exc}"
+                        f"Embedding request failed after {OPENAI_EMBED_MAX_RETRIES} attempts: {exc}"
                     ) from exc
                 time.sleep(min(OPENAI_RETRY_BASE_SEC * (2 ** (attempt - 1)), 30.0))
-        else:
-            raise RuntimeError(f"OpenAI embedding request failed: {last_exc}")
-        vectors.extend(item.embedding for item in response.data)
     return vectors
 
 
@@ -313,9 +371,10 @@ def _image_data_url(image_bytes: bytes, filename: str, content_type: str = "") -
 
 
 def _ocr_image_bytes(image_bytes: bytes, filename: str, content_type: str = "") -> str:
-    response = _client().chat.completions.create(
-        model=OCR_MODEL_ID,
-        messages=[
+    response = create_chat_completion(
+        _client(),
+        OCR_MODEL_ID,
+        [
             {
                 "role": "user",
                 "content": [
@@ -330,8 +389,10 @@ def _ocr_image_bytes(image_bytes: bytes, filename: str, content_type: str = "") 
                 ],
             }
         ],
+        MAX_NEW_TOKENS,
         temperature=0,
-        max_tokens=MAX_NEW_TOKENS,
+        # 글자 옮겨 적기에는 추론이 필요 없다. 지연과 비용을 줄인다.
+        reasoning_effort="none",
     )
     return str(response.choices[0].message.content or "").strip()
 
