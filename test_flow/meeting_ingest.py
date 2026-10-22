@@ -152,15 +152,9 @@ def upsert_meeting_chunks(chunks: list[dict[str, Any]], *, collection_name: str 
     collection = collection_name or qdrant_collection_for_project(
         metadata.get("project_id") if isinstance(metadata, dict) else None
     )
-    try:
-        exists = bool(client.collection_exists(collection))
-    except AttributeError:
-        exists = collection in {item.name for item in client.get_collections().collections}
-    if not exists:
-        client.create_collection(
-            collection_name=collection,
-            vectors_config=models.VectorParams(size=bundle.dimensions, distance=models.Distance.COSINE),
-        )
+    from qdrant_schema import ensure_collection
+
+    ensure_collection(client, models, collection, bundle.dimensions)
 
     ensure_payload_indexes(client, collection)
     meeting_id = str(chunks[0].get("metadata", {}).get("meeting_id") or "")

@@ -569,18 +569,12 @@ def upsert_chunks_to_qdrant(
         timeout=float(os.getenv("QDRANT_TIMEOUT_SEC", "120")),
     )
     collection_name = collection or qdrant_collection_for_project(metadata.get("project_id"))
-    try:
-        exists = bool(client.collection_exists(collection_name))
-    except AttributeError:
-        exists = collection_name in {item.name for item in client.get_collections().collections}
-    if not exists:
-        _with_retries(
-            "Qdrant create_collection",
-            lambda: client.create_collection(
-                collection_name=collection_name,
-                vectors_config=models.VectorParams(size=bundle.dimensions, distance=models.Distance.COSINE),
-            ),
-        )
+    from qdrant_schema import ensure_collection
+
+    _with_retries(
+        "Qdrant ensure_collection",
+        lambda: ensure_collection(client, models, collection_name, bundle.dimensions),
+    )
     ensure_payload_indexes(client, collection_name)
     points = []
     for chunk, vector in zip(chunks, vectors, strict=True):
