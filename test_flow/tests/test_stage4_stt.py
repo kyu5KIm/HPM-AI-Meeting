@@ -18,7 +18,7 @@ def meeting_audio(tmp_path_factory):
     if not shutil.which("ffmpeg"):
         pytest.skip("ffmpeg not installed")
     path = tmp_path_factory.mktemp("audio") / "meeting.webm"
-    inputs, filters = [], []
+    inputs = []
     for i in range(COUNT):
         inputs += ["-f", "lavfi", "-i", f"sine=frequency={300 + 40 * (i % 3)}:duration={TONE}",
                    "-f", "lavfi", "-i", f"anullsrc=r=48000:cl=mono:d={GAP}"]

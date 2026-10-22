@@ -205,3 +205,26 @@ def test_retrieval_skip_rerank_follows_provider(monkeypatch):
     assert retrieval._skip_rerank_default() is True
     monkeypatch.setenv("KURE_API_KEY", "k")
     assert retrieval._skip_rerank_default() is False
+
+
+def test_switching_provider_keeps_ingest_and_search_in_sync():
+    """제공자만 바꿔도 모델명·차원·검색 설정이 같이 바뀌어야 한다(.env.example 기본값에 묶이면 안 됨)."""
+    import json
+    import os
+    import subprocess
+
+    script = (
+        "import config, os, json;"
+        "print(json.dumps([config.EMBEDDING_PROVIDER, config.EMBEDDING_MODEL_ID, config.EMBEDDING_DIMENSIONS,"
+        "os.environ['RAG_EMBEDDING_PROVIDER'], os.environ['RAG_EMBEDDING_MODEL'], os.environ['RAG_EMBEDDING_DIMENSIONS'],"
+        "config.RERANK_PROVIDER, config.RERANK_MODEL]))"
+    )
+    clean = {k: v for k, v in os.environ.items() if not k.startswith(("TEST_FLOW_", "EMBEDDING_", "RAG_", "RERANK_"))}
+
+    def run(extra):
+        out = subprocess.run([sys.executable, "-c", script], cwd=APP_DIR, env={**clean, **extra}, capture_output=True, text=True, check=True)
+        return json.loads(out.stdout.strip().splitlines()[-1])
+
+    assert run({}) == ["kure", "kure-v3", "1024", "kure", "kure-v3", "1024", "kure", "kure-reranker-nano"]
+    old = run({"TEST_FLOW_EMBEDDING_PROVIDER": "openai", "TEST_FLOW_RERANK_PROVIDER": "cohere"})
+    assert old == ["openai", "text-embedding-3-small", "", "openai", "text-embedding-3-small", "", "cohere", "rerank-v3.5"]
