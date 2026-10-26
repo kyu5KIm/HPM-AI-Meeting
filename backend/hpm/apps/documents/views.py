@@ -16,7 +16,6 @@ from apps.projects.models import ProjectUsers
 from .models import Document
 from .serializers import DocumentSerializer
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 MAX_FILE_SIZE = 20 * 1024 * 1024
 PARSED_REQUEST_TIMEOUT = 1200
 PARSED_STATUS_TIMEOUT = 1000
@@ -176,7 +175,7 @@ def upload_config(request):
     return Response({
         "max_files": 10,
         "max_size_mb": 20,
-        "allowed_formats": ["pdf", "docx", "txt"],
+        "allowed_formats": sorted(ext.lstrip(".") for ext in settings.DOCUMENT_ALLOWED_EXTENSIONS),
         "messages": {
             "entry": "최대 파일 10개만 업로드 가능합니다",
             "size_exceeded": "파일의 용량이 20MB를 초과했습니다.\n다시 한번 확인해주세요",
@@ -213,7 +212,7 @@ def document_list(request, project_id):
 
     for file in files:
         ext = os.path.splitext(file.name)[1].lower()
-        if ext not in ALLOWED_EXTENSIONS:
+        if ext not in settings.DOCUMENT_ALLOWED_EXTENSIONS:
             errors.append({"file": file.name, "error": "허용되지 않는 파일 형식입니다."})
             continue
         if file.size > MAX_FILE_SIZE:

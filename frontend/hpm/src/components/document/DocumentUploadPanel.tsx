@@ -101,7 +101,7 @@ export default function DocumentUploadPanel({
           id="document-file-upload-input"
           type="file"
           multiple
-          accept=".pdf,.docx,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          accept=".pdf,.hwp,.hwpx,.docx,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           className="hidden"
           onChange={handleFileChange}
         />
@@ -119,7 +119,7 @@ export default function DocumentUploadPanel({
               파일을 드래그하거나 클릭하여 업로드
             </span>
             <span className="mt-[10px] text-[15px] font-medium text-[#808080]">
-              PDF · DOCX · TXT 파일당 최대 20MB
+              PDF · HWP · HWPX · DOCX · TXT 파일당 최대 20MB
             </span>
             <span className="mt-[33px] flex h-[48px] w-[150px] items-center justify-center rounded-[7px] bg-[#141414] text-[17px] font-medium text-[#fdfdfd]">
               파일 선택

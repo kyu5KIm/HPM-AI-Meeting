@@ -80,13 +80,21 @@ def _ocr_upload_document_response(document):
     }
 
 
+def meeting_datetime_text(meeting):
+    """회의 일시를 서버 시간대(Asia/Seoul) 기준 'YYYY-MM-DD HH:MM'으로. 회의록과 검색 청크 헤더에 같이 쓴다."""
+    if not meeting.meeting_at:
+        return ""
+    value = timezone.localtime(meeting.meeting_at) if timezone.is_aware(meeting.meeting_at) else meeting.meeting_at
+    return value.strftime("%Y-%m-%d %H:%M")
+
+
 def _minutes_payload(meeting, text):
     return {
         "text": text,
         "meeting_id": str(meeting.meeting_id),
         "project_id": str(meeting.project_id),
         "title": meeting.title or "",
-        "meeting_datetime": str(meeting.meeting_at or ""),
+        "meeting_datetime": meeting_datetime_text(meeting),
         "location": meeting.location or "",
     }
 
