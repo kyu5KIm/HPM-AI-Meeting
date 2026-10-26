@@ -21,7 +21,8 @@ class UploadedDocument:
     content: bytes
 
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
+# kordoc_parser가 읽는 형식 중 내부 문서로 받는 것. 이미지는 /ocr 경로에서만 받는다.
+ALLOWED_EXTENSIONS = {".pdf", ".hwp", ".hwpx", ".docx", ".txt"}
 
 
 def preload_embedding_model() -> dict[str, Any]:
@@ -128,7 +129,7 @@ def _prepare_uploads(files: list[UploadedDocument], raw_dir: Path, pdf_dir: Path
     for index, upload in enumerate(files, start=1):
         original_suffix = Path(upload.filename or "").suffix.lower()
         if original_suffix not in ALLOWED_EXTENSIONS:
-            raise ValueError(f"Unsupported file type: {upload.filename}. Allowed: .pdf, .docx, .txt")
+            raise ValueError(f"Unsupported file type: {upload.filename}. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}")
 
         filename = _safe_filename(upload.filename, index, original_suffix)
         path = raw_dir / filename

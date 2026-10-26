@@ -80,6 +80,7 @@ VITE_API_BASE_URL=http://localhost:8000/api
 | `RUNPOD_STT_BASE_URL` | STT 서버 주소 | `http://localhost:8502` |
 | `RUNPOD_OCR_BASE_URL` | OCR 서버 주소 | `http://localhost:8501` |
 | `RUNPOD_PARSED_BASE_URL` | parsed 문서 ingest 서버 주소 | `http://localhost:8503` |
+| `DOCUMENT_ALLOWED_EXTENSIONS` | 내부 문서 업로드 허용 확장자. HWP를 못 읽는 AI 서버(`ai/parsed`)에 연결하면 `.pdf,.docx,.txt`로 줄인다 | `.pdf,.hwp,.hwpx,.docx,.txt` |
 | `RAG_SERVER_URL` | 챗봇 API 주소 | `http://localhost:8504/chat` |
 | `JIRA_BASE_URL` | Jira base URL | `https://your-domain.atlassian.net` |
 | `JIRA_API_TOKEN` | Jira API token | secret |
@@ -117,6 +118,7 @@ RUNPOD_CORE_BASE_URL=http://localhost:8504
 RUNPOD_STT_BASE_URL=http://localhost:8502
 RUNPOD_OCR_BASE_URL=http://localhost:8501
 RUNPOD_PARSED_BASE_URL=http://localhost:8503
+DOCUMENT_ALLOWED_EXTENSIONS=.pdf,.hwp,.hwpx,.docx,.txt
 RAG_SERVER_URL=http://localhost:8504/chat
 
 # Jira REST / OAuth

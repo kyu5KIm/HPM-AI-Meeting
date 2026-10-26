@@ -65,7 +65,8 @@ def run_kordoc(path: Path, *, ocr: bool | None = None, timeout: float | None = N
     env.setdefault("NODE_USE_ENV_PROXY", "1")
     with tempfile.TemporaryDirectory(prefix="kordoc_") as work:
         out_path = Path(work) / "result.json"
-        args = command + [str(path), "--format", "json", "--no-images", "--silent", "-o", str(out_path)]
+        # 임시 폴더를 cwd로 실행하므로 입력 경로는 반드시 절대 경로로 넘긴다.
+        args = command + [str(Path(path).resolve()), "--format", "json", "--no-images", "--silent", "-o", str(out_path)]
         if ocr:
             args.append("--ocr")
         try:

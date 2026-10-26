@@ -12,11 +12,10 @@ from starlette.concurrency import run_in_threadpool
 
 from config import EMBEDDING_DEVICE, EMBEDDING_MODEL_ID, EMBEDDING_PROVIDER
 
-from .service import UploadedDocument, ingest_uploaded_documents
+from .service import ALLOWED_EXTENSIONS, UploadedDocument, ingest_uploaded_documents
 
 
 router = APIRouter(prefix="/internal-docs", tags=["internal-docs"])
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 INGEST_JOBS: dict[str, dict[str, Any]] = {}
 INGEST_JOBS_LOCK = threading.Lock()
 INGEST_JOB_EXECUTOR = ThreadPoolExecutor(max_workers=int(os.getenv("INTERNAL_DOCS_JOB_WORKERS", "1")))
@@ -54,7 +53,7 @@ async def _collect_uploads(files: list[UploadFile]) -> list[UploadedDocument]:
     for file in files:
         filename = file.filename or ""
         if not any(filename.lower().endswith(extension) for extension in ALLOWED_EXTENSIONS):
-            raise HTTPException(status_code=400, detail=f"Only PDF, DOCX, and TXT files are supported: {filename}")
+            raise HTTPException(status_code=400, detail=f"Only PDF, HWP, HWPX, DOCX, and TXT files are supported: {filename}")
         content = await file.read()
         if not content:
             raise HTTPException(status_code=400, detail=f"Uploaded file is empty: {filename}")
