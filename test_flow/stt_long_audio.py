@@ -64,7 +64,8 @@ def ffmpeg_available() -> bool:
 
 
 def _run(args: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(args, capture_output=True, text=True, check=False)
+    # Windows 기본 인코딩(cp949)으로 읽으면 한글 파일명·메타데이터에서 출력이 None이 된다.
+    return subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
 
 
 def probe_duration(path: str | Path) -> float:

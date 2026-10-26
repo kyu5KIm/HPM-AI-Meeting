@@ -70,7 +70,9 @@ def run_kordoc(path: Path, *, ocr: bool | None = None, timeout: float | None = N
         if ocr:
             args.append("--ocr")
         try:
-            completed = subprocess.run(args, cwd=work, env=env, capture_output=True, text=True, timeout=timeout)
+            completed = subprocess.run(
+                args, cwd=work, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout
+            )
         except subprocess.TimeoutExpired as exc:
             raise KordocError(f"kordoc timed out after {timeout:.0f}s: {path.name}") from exc
         if not out_path.exists():
