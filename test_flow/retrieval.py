@@ -595,6 +595,32 @@ def feature_chat_retrieve(
     }
 
 
+def feature_chat_ranked_hits(
+    question: str,
+    *,
+    top_k: int,
+    project_id: Any = None,
+    meeting_id: Any = None,
+    source_scope: str = "project",
+    source_types: list[str] | None = None,
+) -> list[Any]:
+    """/chat과 같은 검색 경로(Dense + BM25 -> RRF -> Rerank)로 상위 top_k 청크를 반환한다. 평가용."""
+    bundle = load_feature_chat_rag(project_id=project_id)
+    module = bundle.query_module
+    args = _search_args(
+        module,
+        question,
+        top_k=top_k,
+        project_id=project_id,
+        meeting_id=meeting_id,
+        source_scope=source_scope,
+        source_types=source_types,
+    )
+    if not bundle.records:
+        return []
+    return _retrieve_with_meeting_filter_fallback(module, args, bundle)
+
+
 def preparation_query(req: PreparationRequest) -> str:
     participant_text = " ".join(
         f"{item.get('name', '')} {item.get('work', '')}" if isinstance(item, dict) else str(item)
