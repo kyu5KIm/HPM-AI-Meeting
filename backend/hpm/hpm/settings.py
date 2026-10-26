@@ -66,16 +66,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'hpm.wsgi.application'
 
-# ── DB (MySQL) ───────────────────────────────────────────────────
+# ── DB (PostgreSQL / Supabase) ───────────────────────────────────
+# Supabase 대시보드 > Connect > Session pooler 값을 그대로 사용
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv("DB_NAME", "hpm_db"),
-        'USER': os.getenv("DB_USER", "root"),
-        'PASSWORD': os.getenv("DB_PASSWORD", "1234"),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv("DB_NAME", "postgres"),
+        'USER': os.getenv("DB_USER", "postgres"),
+        'PASSWORD': os.getenv("DB_PASSWORD", ""),
         'HOST': os.getenv("DB_HOST", "localhost"),
-        'PORT': os.getenv("DB_PORT", "3306"),
-        'OPTIONS': {'charset': 'utf8mb4'},
+        'PORT': os.getenv("DB_PORT", "5432"),
+        'CONN_MAX_AGE': int(os.getenv("DB_CONN_MAX_AGE", "60")),
+        'OPTIONS': {'sslmode': os.getenv("DB_SSLMODE", "prefer")},
     }
 }
 

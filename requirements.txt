@@ -3,8 +3,8 @@ Django==4.2.7
 djangorestframework==3.14.0
 django-cors-headers==4.3.1
 
-# MySQL 연결
-mysqlclient==2.2.4
+# PostgreSQL(Supabase) 연결
+psycopg[binary]==3.2.3
 
 # HTTP 요청 (RunPod AI 서버 호출용)
 requests==2.31.0
