@@ -94,6 +94,25 @@ OpenAI 전사 API의 파일당 25MB·요청당 길이 제한을 서버에서 처
 - 회의록 청크에는 `[회의: 제목 / 일시]`, `[항목: 요약|회의록 본문|할 일]` 헤더가 붙습니다.
 - `DOCUMENT_PARSER=local`로 두면 예전 PyMuPDF + pdfplumber 경로(PDF 전용)를 씁니다. 비교 측정용입니다.
 
+## 재적재 (임베딩·청킹 변경 후)
+
+임베딩 모델이 바뀌면 벡터 차원이 달라 기존 컬렉션을 쓸 수 없습니다. 새 컬렉션(`hpm_project_kure_*`)에 다시 적재합니다.
+컬렉션은 기본 dense 벡터와 함께 `kure_sparse` sparse 벡터 자리를 미리 만들어 둡니다(KURE-Sparse 도입 시 재적재 없이 채움).
+
+```bash
+# 1) 교체 전 기준 측정 (rag_eval/README.md 참고)
+# 2) test_flow 서버를 새 설정으로 실행
+# 3) 백엔드에서 대상 확인 후 재적재
+cd backend/hpm
+python manage.py reingest_rag --dry-run
+python manage.py reingest_rag            # 전체 프로젝트
+python manage.py reingest_rag --project 3
+# 4) 같은 평가 세트로 교체 후 측정, rag_eval.compare로 비교
+```
+
+- 문서: 백엔드 저장소(S3 또는 media)의 원본을 `/internal-docs/ingest/jobs`로 10개씩 다시 보내고 작업 완료를 기다립니다.
+- 회의록: 회의가 끝난(`meeting_status=2`) 회의의 회의록과 태스크를 `/meeting-minutes/ingest`로 다시 넣습니다. 같은 회의를 다시 넣으면 기존 청크를 지우고 다시 씁니다.
+
 ## 주의
 
 - 기존 로컬/HF/vLLM 모델 값이 `.env`에 남아 있어도 `test_flow`는 `TEST_FLOW_*` 설정을 우선합니다. 예전 `.env`에 `TEST_FLOW_EMBEDDING_PROVIDER=openai` 같은 값이 남아 있으면 새 기본값보다 우선하니 지워 주세요.
