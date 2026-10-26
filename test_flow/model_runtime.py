@@ -14,9 +14,12 @@ from typing import Any
 
 from config import (
     EMBEDDING_BATCH_SIZE,
+    EMBEDDING_DEVICE,
     EMBEDDING_DIMENSIONS_INT,
     EMBEDDING_MODEL_ID,
+    EMBEDDING_PROVIDER,
     MAX_NEW_TOKENS,
+    OCR_BACKEND,
     OCR_MAX_PDF_PAGES,
     OCR_MIN_DIRECT_TEXT_CHARS,
     OCR_MODEL_ID,
@@ -29,6 +32,8 @@ from config import (
     STT_DEVICE,
     STT_MODEL_ID,
     TEXT_MODEL_ID,
+    TEXT_REASONING_EFFORT,
+    TEXT_REASONING_EXTRA_TOKENS,
 )
 
 
@@ -105,14 +110,55 @@ def load_stt_model() -> SttBundle:
     return stt_bundle
 
 
+UNSUPPORTED_RETRY_PARAMS = ("temperature", "reasoning_effort")
+
+
+def is_reasoning_model(model: str) -> bool:
+    name = str(model or "").lower().split("/")[-1]
+    return name.startswith(("gpt-5", "gpt-6", "o1", "o3", "o4"))
+
+
+def chat_completion_kwargs(
+    model: str,
+    max_new_tokens: int,
+    *,
+    temperature: float = 0,
+    reasoning_effort: str | None = None,
+) -> dict[str, Any]:
+    """모델 계열에 맞는 생성 파라미터를 만든다.
+
+    GPT-5 계열(추론 모델)은 max_tokens 대신 max_completion_tokens를 쓰고, 추론 토큰도 그 한도에 포함된다.
+    temperature는 reasoning_effort=none일 때만 적용한다.
+    """
+    if not is_reasoning_model(model):
+        return {"temperature": temperature, "max_tokens": max_new_tokens}
+    effort = (reasoning_effort or TEXT_REASONING_EFFORT or "low").lower()
+    kwargs: dict[str, Any] = {"reasoning_effort": effort}
+    if effort == "none":
+        kwargs["max_completion_tokens"] = max_new_tokens
+        kwargs["temperature"] = temperature
+    else:
+        kwargs["max_completion_tokens"] = max_new_tokens + max(0, TEXT_REASONING_EXTRA_TOKENS)
+    return kwargs
+
+
+def create_chat_completion(client: Any, model: str, messages: list[Any], max_new_tokens: int, **options: Any) -> Any:
+    kwargs = chat_completion_kwargs(model, max_new_tokens, **options)
+    try:
+        return client.chat.completions.create(model=model, messages=messages, **kwargs)
+    except Exception as exc:
+        # 모델이 temperature나 reasoning_effort를 받지 않으면 해당 파라미터를 빼고 한 번만 다시 시도한다.
+        message = str(exc).lower()
+        rejected = any(word in message for word in ("unsupported", "not supported", "does not support", "invalid"))
+        retry = {key: value for key, value in kwargs.items() if not (rejected and key in UNSUPPORTED_RETRY_PARAMS and key in message)}
+        if retry == kwargs:
+            raise
+        return client.chat.completions.create(model=model, messages=messages, **retry)
+
+
 def generate_text(messages: list[dict[str, str]], *, max_new_tokens: int = MAX_NEW_TOKENS) -> str:
     bundle = load_text_model()
-    response = bundle.llm.chat.completions.create(
-        model=TEXT_MODEL_ID,
-        messages=messages,
-        temperature=0,
-        max_tokens=max_new_tokens,
-    )
+    response = create_chat_completion(bundle.llm, TEXT_MODEL_ID, messages, max_new_tokens)
     return str(response.choices[0].message.content or "").strip()
 
 
@@ -147,32 +193,45 @@ def generate_json(messages: list[dict[str, str]], *, max_new_tokens: int = MAX_N
         return extract_json(generate_text(repair_messages, max_new_tokens=max_new_tokens))
 
 
-def embed_texts(texts: list[str]) -> list[list[float]]:
+_document_embedder: Any = None
+
+
+def _embedder() -> Any:
+    """검색(retrieval)과 같은 임베딩 구현을 써서 적재와 검색의 벡터가 어긋나지 않게 한다."""
+    global _document_embedder
+    if _document_embedder is None:
+        from internal_docs.rag.embeddings import make_embedder
+
+        _document_embedder = make_embedder(
+            provider=EMBEDDING_PROVIDER,
+            model=EMBEDDING_MODEL_ID,
+            dimensions=EMBEDDING_DIMENSIONS_INT,
+            device=EMBEDDING_DEVICE if EMBEDDING_DEVICE != "api" else "auto",
+        )
+    return _document_embedder
+
+
+def embed_texts(texts: list[str], input_type: str = "document") -> list[list[float]]:
     clean_texts = [str(text or "") for text in texts]
     if not clean_texts:
         return []
+    embedder = _embedder()
+    if embedder.provider == "kure":
+        # KURE 클라이언트가 8개 단위 분할, 속도 조절, 429 재시도를 직접 처리한다.
+        return embedder.embed_texts(clean_texts, input_type=input_type)
     vectors: list[list[float]] = []
-    client = _client()
     for start in range(0, len(clean_texts), EMBEDDING_BATCH_SIZE):
         batch = clean_texts[start : start + EMBEDDING_BATCH_SIZE]
-        kwargs: dict[str, Any] = {"model": EMBEDDING_MODEL_ID, "input": batch}
-        if EMBEDDING_DIMENSIONS_INT:
-            kwargs["dimensions"] = EMBEDDING_DIMENSIONS_INT
-        last_exc: Exception | None = None
         for attempt in range(1, OPENAI_EMBED_MAX_RETRIES + 1):
             try:
-                response = client.embeddings.create(**kwargs)
+                vectors.extend(embedder.embed_texts(batch, input_type=input_type))
                 break
             except Exception as exc:
-                last_exc = exc
                 if attempt >= OPENAI_EMBED_MAX_RETRIES:
                     raise RuntimeError(
-                        f"OpenAI embedding request failed after {OPENAI_EMBED_MAX_RETRIES} attempts: {exc}"
+                        f"Embedding request failed after {OPENAI_EMBED_MAX_RETRIES} attempts: {exc}"
                     ) from exc
                 time.sleep(min(OPENAI_RETRY_BASE_SEC * (2 ** (attempt - 1)), 30.0))
-        else:
-            raise RuntimeError(f"OpenAI embedding request failed: {last_exc}")
-        vectors.extend(item.embedding for item in response.data)
     return vectors
 
 
@@ -198,6 +257,52 @@ def _format_timestamp(seconds: float) -> str:
     return f"{m:02d}:{s:02d}"
 
 
+def _transcribe_once(
+    audio_path: str,
+    language: str | None,
+    diarize: bool,
+    known_names: list[str] | None = None,
+    known_references: list[str] | None = None,
+) -> tuple[list[dict[str, Any]], str, str | None]:
+    """OpenAI 전사 API를 한 번 호출한다. 시간은 이 파일 기준(초)이다."""
+    with open(audio_path, "rb") as audio_file:
+        kwargs: dict[str, Any] = {"file": audio_file, "model": STT_MODEL_ID}
+        if language:
+            kwargs["language"] = language
+        if diarize and "diarize" in STT_MODEL_ID:
+            kwargs["response_format"] = "diarized_json"
+            kwargs["chunking_strategy"] = "auto"
+            if known_names and known_references:
+                # 앞 조각에서 뽑은 화자별 음성 샘플(2~10초, 최대 4명)로 같은 사람에게 같은 이름을 붙인다.
+                kwargs["extra_body"] = {
+                    "known_speaker_names": known_names,
+                    "known_speaker_references": known_references,
+                }
+        else:
+            kwargs["response_format"] = "verbose_json"
+        transcript = _client().audio.transcriptions.create(**kwargs)
+
+    payload = _object_to_dict(transcript)
+    segments: list[dict[str, Any]] = []
+    for item in payload.get("segments") or []:
+        seg = _object_to_dict(item)
+        text = str(seg.get("text") or seg.get("transcript") or "").strip()
+        if not text:
+            continue
+        speaker = seg.get("speaker") or seg.get("speaker_id") or seg.get("speaker_label") or seg.get("label")
+        end = seg.get("end") if seg.get("end") is not None else seg.get("end_time")
+        segments.append(
+            {
+                **seg,
+                "speaker": str(speaker) if speaker is not None else None,
+                "start": float(seg.get("start") or seg.get("start_time") or 0),
+                "end": float(end) if end is not None else None,
+                "text": text,
+            }
+        )
+    return segments, str(payload.get("text") or "").strip(), payload.get("language")
+
+
 def transcribe_audio_file(
     audio_path: str,
     *,
@@ -209,56 +314,33 @@ def transcribe_audio_file(
 ) -> dict[str, Any]:
     _ = (batch_size, align, hf_token)
     load_stt_model()
-    with open(audio_path, "rb") as audio_file:
-        kwargs: dict[str, Any] = {"file": audio_file, "model": STT_MODEL_ID}
-        if language:
-            kwargs["language"] = language
-        if diarize and "diarize" in STT_MODEL_ID:
-            kwargs["response_format"] = "diarized_json"
-            kwargs["chunking_strategy"] = "auto"
-        else:
-            kwargs["response_format"] = "verbose_json"
-        transcript = _client().audio.transcriptions.create(**kwargs)
+    from stt_long_audio import transcribe_long_audio
 
-    payload = _object_to_dict(transcript)
-    raw_segments = payload.get("segments") or []
-    normalized_segments: list[dict[str, Any]] = []
-    for index, item in enumerate(raw_segments):
-        seg = _object_to_dict(item)
-        text = str(seg.get("text") or seg.get("transcript") or "").strip()
-        if not text:
-            continue
-        speaker = (
-            seg.get("speaker")
-            or seg.get("speaker_id")
-            or seg.get("speaker_label")
-            or seg.get("label")
-            or f"SPEAKER_{index:02d}"
-        )
-        start = float(seg.get("start") or seg.get("start_time") or 0)
-        normalized_segments.append(
-            {
-                **seg,
-                "speaker": str(speaker),
-                "start": start,
-                "time": f"[{_format_timestamp(start)}]",
-                "text": text,
-                "content": text,
-            }
-        )
-    text = "\n".join(
-        f"{segment['speaker']}: {segment['text']}"
-        for segment in normalized_segments
-    ).strip()
+    # 25MB·길이 제한을 넘는 녹음은 압축·분할해서 전사하고 하나로 합친다.
+    result = transcribe_long_audio(
+        audio_path,
+        lambda path, names, refs: _transcribe_once(path, language, diarize, names, refs),
+        diarize=diarize,
+    )
+    normalized_segments = [
+        {
+            **seg,
+            "time": f"[{_format_timestamp(seg['start'])}]",
+            "content": seg["text"],
+        }
+        for seg in result["segments"]
+    ]
+    text = "\n".join(f"{segment['speaker']}: {segment['text']}" for segment in normalized_segments).strip()
     if not text:
-        text = str(payload.get("text") or "").strip()
+        text = str(result.get("text") or "").strip()
     return {
         "text": text,
-        "language": payload.get("language") or language,
+        "language": result.get("language") or language,
         "segments": normalized_segments,
         "utterances": normalized_segments,
         "device": "api",
         "compute_type": "api",
+        "chunks": result.get("chunks", 1),
     }
 
 
@@ -313,9 +395,10 @@ def _image_data_url(image_bytes: bytes, filename: str, content_type: str = "") -
 
 
 def _ocr_image_bytes(image_bytes: bytes, filename: str, content_type: str = "") -> str:
-    response = _client().chat.completions.create(
-        model=OCR_MODEL_ID,
-        messages=[
+    response = create_chat_completion(
+        _client(),
+        OCR_MODEL_ID,
+        [
             {
                 "role": "user",
                 "content": [
@@ -330,8 +413,10 @@ def _ocr_image_bytes(image_bytes: bytes, filename: str, content_type: str = "") 
                 ],
             }
         ],
+        MAX_NEW_TOKENS,
         temperature=0,
-        max_tokens=MAX_NEW_TOKENS,
+        # 글자 옮겨 적기에는 추론이 필요 없다. 지연과 비용을 줄인다.
+        reasoning_effort="none",
     )
     return str(response.choices[0].message.content or "").strip()
 
@@ -349,6 +434,22 @@ def _render_pdf_pages(content: bytes) -> list[tuple[str, bytes]]:
 
 
 def ocr_file_bytes(file_bytes: bytes, filename: str, content_type: str = "") -> str:
+    """파일에서 텍스트를 뽑는다. 기본은 kordoc(로컬 OCR + 부족한 페이지만 Luna)이고, 실패하면 OpenAI 경로로 넘어간다."""
+    ext = os.path.splitext(filename or "")[1].lower()
+    if OCR_BACKEND == "kordoc" and ext not in {".txt", ".gif", ".bmp"}:
+        from kordoc_parser import KORDOC_EXTENSIONS, KordocError, KordocUnavailable, extract_text
+
+        if ext in KORDOC_EXTENSIONS:
+            try:
+                text = extract_text(file_bytes, filename)
+                if text.strip():
+                    return text
+            except (KordocUnavailable, KordocError) as exc:
+                print(f"[ocr] kordoc unavailable, falling back to OpenAI OCR: {exc}")
+    return _openai_ocr_file_bytes(file_bytes, filename, content_type)
+
+
+def _openai_ocr_file_bytes(file_bytes: bytes, filename: str, content_type: str = "") -> str:
     ext = os.path.splitext(filename or "")[1].lower()
     mime = _content_type(filename, content_type)
     if ext == ".txt" or mime.startswith("text/"):

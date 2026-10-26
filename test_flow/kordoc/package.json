@@ -1,0 +1,9 @@
+{
+  "name": "hpm-test-flow-kordoc",
+  "private": true,
+  "description": "test_flow 문서 파서(kordoc) 고정 버전. 설치: npm ci",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "kordoc": "4.24.1"
+  }
+}

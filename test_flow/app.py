@@ -44,7 +44,7 @@ from model_runtime import cleanup_cuda, generate_json, load_embedding_model, loa
 from news import search_preparation_news
 from prompts import agenda_messages, chat_intent_messages, chat_messages, general_chat_messages, minutes_messages, preparation_messages
 from retrieval import feature_chat_retrieve, invalidate_feature_chat_rag, load_feature_chat_rag, select_preparation_documents
-from schemas import AgendaRequest, ChatRequest, MinutesRequest, PreparationRequest, TextResponse
+from schemas import AgendaRequest, ChatRequest, MeetingIngestRequest, MinutesRequest, PreparationRequest, TextResponse
 
 
 app = FastAPI(title="HPM Core LLM/RAG Server", version="1.0.0")
@@ -806,6 +806,11 @@ def health() -> dict[str, Any]:
         "embedding_model": EMBEDDING_MODEL_ID,
         "preload_embedding_model": PRELOAD_EMBEDDING_MODEL,
         "feature_chat_dir": str(FEATURE_CHAT_DIR),
+        "embedding_provider": os.getenv("EMBEDDING_PROVIDER"),
+        "embedding_dimensions": os.getenv("EMBEDDING_DIMENSIONS"),
+        "kure_api_configured": bool(os.getenv("KURE_API_KEY")),
+        "rerank_provider": os.getenv("RERANK_PROVIDER"),
+        "rerank_model": os.getenv("RERANK_MODEL"),
         "cohere_rerank_configured": bool(os.getenv("COHERE_API_KEY") or os.getenv("CO_API_KEY")),
         "rag_skip_rerank": os.getenv("RAG_SKIP_RERANK"),
         "cohere_rerank_model": os.getenv("COHERE_RERANK_MODEL", "rerank-v3.5"),
@@ -895,6 +900,20 @@ def get_generate_minutes_job(job_id: str) -> dict[str, Any]:
 @app.post("/generate-minutes", response_model=TextResponse)
 def generate_minutes(req: MinutesRequest) -> TextResponse:
     return _generate_minutes_response(req)
+
+
+@app.post("/meeting-minutes/ingest")
+def ingest_existing_meeting_minutes(req: MeetingIngestRequest) -> dict[str, Any]:
+    """저장된 회의록을 현재 임베딩·컬렉션 설정으로 다시 적재한다."""
+    if not (req.content.strip() or req.summary.strip() or req.todo_list):
+        raise HTTPException(status_code=400, detail="content, summary, or todo_list is required.")
+    result = {"content": req.content, "summary": req.summary, "todo_list": req.todo_list}
+    try:
+        ingest = ingest_meeting_minutes(req, result)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    invalidate_feature_chat_rag(project_id=req.project_id)
+    return {"meeting_id": req.meeting_id, **ingest}
 
 
 @app.post("/generate-agendas", response_model=TextResponse)
