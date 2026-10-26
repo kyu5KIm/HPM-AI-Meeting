@@ -13,9 +13,10 @@ ROOT_DIR = APP_DIR.parent
 
 
 def load_env_files() -> None:
+    # .env.example is a template with placeholder values; loading it would let
+    # placeholders like TEST_FLOW_OPENAI_API_KEY override real keys.
     for path in [
         APP_DIR / ".env",
-        APP_DIR / ".env.example",
         ROOT_DIR / ".env",
     ]:
         if path.exists():
