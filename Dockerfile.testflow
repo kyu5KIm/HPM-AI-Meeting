@@ -1,0 +1,25 @@
+# ================================================================
+# Dockerfile.testflow
+# 역할: test_flow FastAPI 서버를 실행할 컨테이너 환경을 만드는 설계도
+# ================================================================
+
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# requirements만 먼저 복사해 Docker layer cache를 활용한다.
+COPY test_flow/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# .env가 이미지에 들어가지 않도록 필요한 소스만 선별 복사한다.
+COPY test_flow/*.py ./
+COPY test_flow/stt_terms.json ./stt_terms.json
+COPY test_flow/feature_chat ./feature_chat
+COPY test_flow/internal_docs ./internal_docs
+
+EXPOSE 8500
+
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8500"]

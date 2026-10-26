@@ -13,12 +13,6 @@ import type { DocumentRecord } from "../../types/documentManagement";
 const DOCUMENTS_PER_PAGE = 10;
 
 function openInNewTab(url: string) {
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
-  if (opened) {
-    opened.opener = null;
-    return;
-  }
-
   const link = document.createElement("a");
   link.href = url;
   link.target = "_blank";
