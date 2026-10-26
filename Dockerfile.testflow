@@ -3,12 +3,28 @@
 # 역할: test_flow FastAPI 서버를 실행할 컨테이너 환경을 만드는 설계도
 # ================================================================
 
+# ── 문서 파서 kordoc(Node.js) 설치 단계 ─────────────────────────
+# package-lock.json 버전 그대로 설치하고, node 실행 파일과 함께 아래 단계로 복사한다.
+FROM node:22-bookworm-slim AS kordoc
+WORKDIR /kordoc
+COPY test_flow/kordoc/package.json test_flow/kordoc/package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+
+
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
+
+# STT 긴 녹음 압축·분할에 ffmpeg가 필요하다.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# kordoc CLI는 node로 실행된다 (kordoc/node_modules/.bin/kordoc).
+COPY --from=kordoc /usr/local/bin/node /usr/local/bin/node
+COPY --from=kordoc /kordoc ./kordoc
 
 # requirements만 먼저 복사해 Docker layer cache를 활용한다.
 COPY test_flow/requirements.txt ./requirements.txt
