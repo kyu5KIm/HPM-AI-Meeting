@@ -1,12 +1,11 @@
 import hashlib
-import base64
-import json
 import re
 
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from .authentication import CustomJWTAuthentication
 from .models import Users, Dept, Rank
 from .serializers import UserSerializer
 
@@ -24,6 +23,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import permission_classes
 from django.conf import settings
+from django.core import signing
 from django.middleware.csrf import get_token
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
@@ -41,7 +41,9 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 JIRA_CLIENT_ID = os.getenv("JIRA_CLIENT_ID", "")
 JIRA_CLIENT_SECRET = os.getenv("JIRA_CLIENT_SECRET", "")
 JIRA_REDIRECT_URI = os.getenv("JIRA_REDIRECT_URI", "http://localhost:8000/api/jira/callback/")
-JIRA_SCOPES = "read:jira-work write:jira-work read:board-scope:jira-software write:issue:jira-software offline_access"
+JIRA_SCOPES = "read:jira-work write:jira-work read:jira-user read:board-scope:jira-software write:issue:jira-software offline_access"
+JIRA_STATE_SALT = "jira-oauth-state"
+JIRA_STATE_MAX_AGE = 600  # Atlassian 로그인/동의에 주는 시간(초)
 
 
 def _hash_pw(raw: str) -> str:
@@ -57,27 +59,41 @@ def _encode_jira_state(user_id: str, next_path: str | None = None) -> str:
     if _is_safe_frontend_path(next_path):
         payload["next"] = next_path
 
-    raw = json.dumps(payload, separators=(",", ":")).encode()
-    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+    # 서명해서 다른 사용자의 user_id로 위조된 state를 콜백에서 거부
+    return signing.dumps(payload, salt=JIRA_STATE_SALT, compress=True)
 
 
 def _decode_jira_state(state: str | None) -> tuple[str, str]:
     if not state:
         return "", ""
 
-    # Backward compatibility: older links used state=user_id.
-    if str(state).isdigit():
-        return str(state), ""
-
     try:
-        padded = state + "=" * (-len(state) % 4)
-        payload = json.loads(base64.urlsafe_b64decode(padded.encode()).decode())
-    except Exception:
+        payload = signing.loads(state, salt=JIRA_STATE_SALT, max_age=JIRA_STATE_MAX_AGE)
+    except signing.BadSignature:  # 위조되었거나 만료된 state
+        return "", ""
+    if not isinstance(payload, dict):
         return "", ""
 
     user_id = str(payload.get("user_id") or "")
     next_path = payload.get("next") or ""
     return user_id, next_path if _is_safe_frontend_path(next_path) else ""
+
+
+def _fetch_jira_account_id(access_token: str, cloud_id: str) -> str:
+    """현재 Jira 사용자의 accountId 조회 (이슈 담당자 지정에 필요, read:jira-user scope)."""
+    if not access_token or not cloud_id:
+        return ""
+    try:
+        res = requests.get(
+            f"https://api.atlassian.com/ex/jira/{cloud_id}/rest/api/3/myself",
+            headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
+            timeout=10,
+        )
+    except requests.RequestException:
+        return ""
+    if not res.ok:
+        return ""
+    return res.json().get("accountId") or ""
 
 
 def _jira_redirect(next_path: str = "", result: str = "success"):
@@ -316,14 +332,15 @@ def user_detail(request, users_id):
 
 # ── Step 1: Jira 로그인 시작 ───────────────────────────────────────────────
 # GET /api/jira/start/
-# 세션에서 user_id를 읽어서 Atlassian 로그인 페이지로 리다이렉트
+# 로그인 쿠키(access)에서 사용자를 확인해서 Atlassian 로그인 페이지로 리다이렉트
 @permission_classes([AllowAny])
 def jira_oauth_start(request):
-    user_id = request.GET.get("user_id")
-    if not user_id:
+    auth = CustomJWTAuthentication().authenticate(request)
+    if not auth:
         return redirect(f"{FRONTEND_URL}/projects/create?jira=error&reason=not_logged_in")
+    user, _ = auth
 
-    state = _encode_jira_state(user_id, request.GET.get("next"))
+    state = _encode_jira_state(user.users_id, request.GET.get("next"))
     auth_url = (
         "https://auth.atlassian.com/authorize"
         f"?audience=api.atlassian.com"
@@ -338,16 +355,12 @@ def jira_oauth_start(request):
 
 
 # ── Step 2: Jira 로그인 콜백 ──────────────────────────────────────────────
-# GET /api/jira/callback/?code=...&state=user_id
+# GET /api/jira/callback/?code=...&state=서명된 state
 # Atlassian이 인증 후 이 URL로 code를 보내줌
 @permission_classes([AllowAny])
 def jira_oauth_callback(request):
     code = request.GET.get("code")
-    user_id = request.GET.get("state")  # start에서 넣었던 user_id
-
-    state_user_id, next_path = _decode_jira_state(request.GET.get("state"))
-    if state_user_id:
-        user_id = state_user_id
+    user_id, next_path = _decode_jira_state(request.GET.get("state"))
 
     if not code or not user_id or not str(user_id).isdigit():
         return _jira_redirect(next_path, "error")
@@ -389,6 +402,8 @@ def jira_oauth_callback(request):
             # 선택 없이 Accept하면 전체가 내려오므로 그때는 첫 번째를 사용
             cloud_id = resources[0].get("id", "") if resources else ""  # 첫 번째 Jira 인스턴스
 
+    account_id = _fetch_jira_account_id(access_token, cloud_id)
+
     # DB에 토큰 저장
     try:
         user = Users.objects.get(users_id=user_id)
@@ -396,13 +411,17 @@ def jira_oauth_callback(request):
         user.jira_refresh_token = refresh_token
         user.jira_token_expires_at = timezone.now() + timedelta(seconds=expires_in)
         user.jira_cloud_id = cloud_id
-        
-        user.save(update_fields=[
+        update_fields = [
             "jira_access_token",
             "jira_refresh_token",
             "jira_token_expires_at",
             "jira_cloud_id",
-        ])
+        ]
+        if account_id:
+            user.jira_account_id = account_id
+            update_fields.append("jira_account_id")
+
+        user.save(update_fields=update_fields)
     except (Users.DoesNotExist, ValueError):
         return _jira_redirect(next_path, "error")
 
@@ -568,7 +587,13 @@ def jira_select_workspace(request):
         return Response({"error": "cloud_id가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
 
     user.jira_cloud_id = cloud_id
-    user.save(update_fields=["jira_cloud_id"])
+    update_fields = ["jira_cloud_id"]
+    if not user.jira_account_id:
+        account_id = _fetch_jira_account_id(get_valid_access_token(user), cloud_id)
+        if account_id:
+            user.jira_account_id = account_id
+            update_fields.append("jira_account_id")
+    user.save(update_fields=update_fields)
     return Response({"cloud_id": cloud_id})
 
 

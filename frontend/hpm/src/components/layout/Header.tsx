@@ -190,13 +190,13 @@ export default function Header() {
     if (connected) return;
 
     const next = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/jira/start/?user_id=${user.users_id}&next=${next}`;
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/jira/start/?next=${next}`;
   };
 
   const handleJiraReconnect = () => {
     if (!user?.users_id || jiraStatusLoading) return;
     const next = encodeURIComponent(window.location.pathname + window.location.search);
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/jira/start/?user_id=${user.users_id}&next=${next}`;
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/jira/start/?next=${next}`;
   };
 
   const handleChangePassword = () => {
