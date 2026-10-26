@@ -78,7 +78,8 @@ OCR_MODEL_ID = force_env(
     "OCR_MODEL_ID",
     os.getenv("TEST_FLOW_OCR_MODEL_ID") or os.getenv("OPENAI_OCR_MODEL_ID") or TEXT_MODEL_ID,
 )
-OCR_BACKEND = force_env("OCR_BACKEND", os.getenv("TEST_FLOW_OCR_BACKEND", "openai")).lower()
+# kordoc: 로컬 OCR(PP-OCRv5 Korean) 후 부족한 페이지만 OCR_MODEL_ID(Luna)로 보조. openai: 전부 OCR_MODEL_ID로 처리.
+OCR_BACKEND = force_env("OCR_BACKEND", os.getenv("TEST_FLOW_OCR_BACKEND", "kordoc")).lower()
 PADDLEOCR_VL_URL = os.getenv("PADDLEOCR_VL_URL", "http://127.0.0.1:8080")
 PADDLEOCR_VL_TIMEOUT_SEC = int(os.getenv("PADDLEOCR_VL_TIMEOUT_SEC", "600"))
 PADDLEOCR_VL_RETURN_MARKDOWN_IMAGES = os.getenv("PADDLEOCR_VL_RETURN_MARKDOWN_IMAGES", "false").lower() == "true"

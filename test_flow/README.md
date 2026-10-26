@@ -13,7 +13,7 @@
 | STT | `gpt-4o-transcribe-diarize` |
 | Embedding | KURE API `kure-v3` (1024차원, 질문/문서 `input_type` 구분) |
 | Reranker | KURE API `kure-reranker-nano` (`TEST_FLOW_RERANK_PROVIDER=cohere`로 Cohere 사용 가능) |
-| PDF parser | `PyMuPDF` + `pdfplumber`, 필요 시 OCR fallback |
+| 문서 파서 | `kordoc` 4.24.1 (PDF·HWP·HWPX·DOCX·이미지), 스캔 페이지는 kordoc 로컬 OCR, 부족한 페이지만 Luna 보조 |
 | Vector DB | Qdrant 유지 |
 
 KURE API 키는 https://kure.kullm.ai 에서 GitHub 로그인으로 발급받아 `test_flow/.env`의 `KURE_API_KEY`에 넣습니다.
@@ -28,7 +28,14 @@ KURE API는 요청당 텍스트 8개, 기본 분당 60회·분당 200,000토큰�
 ```powershell
 cd C:\Users\Playdata\Desktop\git\SKN24-FINAL-1Team
 C:\Users\Playdata\miniconda3\envs\hpm_test_1\python.exe -m pip install -r test_flow\requirements.txt
+
+# 문서 파서 kordoc (Node.js 20 이상 필요, 버전은 test_flow/kordoc/package-lock.json으로 고정)
+cd test_flow\kordoc
+npm ci
 ```
+
+kordoc OCR 모델(PP-OCRv5 Korean, 약 18MB)은 스캔 문서를 처음 처리할 때 Hugging Face에서 자동으로 받습니다.
+인터넷이 막힌 서버라면 온라인 PC에서 `npx kordoc models --export <dir>`로 내보낸 뒤 서버에서 `npx kordoc models --import <dir>`로 넣습니다.
 
 ## 실행
 
@@ -69,14 +76,14 @@ RAG_SERVER_URL=http://localhost:8500/chat
 
 ## 문서 파싱
 
-문서 파싱은 로컬 parser만 사용합니다.
+업로드 문서는 형식과 관계없이 `kordoc_parser.py` → 부모-자식 청커(`internal_docs/chunker.py`)를 거칩니다.
 
-- 일반 PDF 텍스트: `PyMuPDF`로 빠르게 추출합니다.
-- PDF 표: `pdfplumber`로 표를 markdown table 형태로 추출합니다.
-- 스캔 PDF 또는 추출 실패: `gpt-4.1-mini` vision OCR fallback을 사용합니다.
-- DOCX/TXT: 로컬 텍스트 추출 후 기존 parent-child chunk 구조로 적재합니다.
-
-청킹은 기존 `Hierarchical Parent-Child` 전략을 유지합니다. parser가 달라져도 `parent_id`, `parent_text`, `child_index`, `child_count`, page/source metadata는 Qdrant payload에 계속 들어갑니다.
+- 지원 형식: PDF, HWP, HWPX, DOCX, PNG/JPG/WebP, TXT
+- kordoc이 제목·문단·표 블록과 페이지 번호를 돌려줍니다. 표는 병합 셀을 펼친 마크다운 표로 바꿉니다.
+- 스캔 페이지는 kordoc 로컬 OCR로 읽고, OCR 후에도 글자가 `LOCAL_PDF_MIN_PAGE_CHARS`보다 적은 페이지만 `OCR_MODEL_ID`(Luna)로 다시 읽습니다. 끄려면 `KORDOC_LUNA_FALLBACK=false`.
+- 청크 앞에는 문맥 헤더가 붙습니다: `[문서: 파일명]`, `[페이지: 3]`, `[위치: 2장 예산 > 2.1 마케팅 예산]`
+- 회의록 청크에는 `[회의: 제목 / 일시]`, `[항목: 요약|회의록 본문|할 일]` 헤더가 붙습니다.
+- `DOCUMENT_PARSER=local`로 두면 예전 PyMuPDF + pdfplumber 경로(PDF 전용)를 씁니다. 비교 측정용입니다.
 
 ## 주의
 

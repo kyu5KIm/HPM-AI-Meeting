@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from config import EMBEDDING_MODEL_ID, qdrant_collection_for_project
-from document_ingest import file_sha256, ingest_pdf_chunks, make_text_chunks, upsert_chunks_to_qdrant
-from model_runtime import load_embedding_model, ocr_file_bytes
+from document_ingest import file_sha256, ingest_pdf_chunks
+from model_runtime import load_embedding_model
 from runtime_locks import GPU_TASK_LOCK
 
 
@@ -53,16 +53,6 @@ def _metadata_from_json(value: str | None) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise ValueError("metadata must be a JSON object")
     return parsed
-
-
-def _decode_text(content: bytes) -> tuple[str, str]:
-    last_error: UnicodeDecodeError | None = None
-    for encoding in ("utf-8-sig", "utf-8", "cp949", "euc-kr"):
-        try:
-            return content.decode(encoding), encoding
-        except UnicodeDecodeError as exc:
-            last_error = exc
-    raise ValueError(f"Unable to decode text file. Tried utf-8-sig, utf-8, cp949, euc-kr: {last_error}")
 
 
 def _document_entry_for_upload(base_metadata: dict[str, Any], upload: UploadedDocument, index: int) -> dict[str, Any]:
@@ -132,7 +122,6 @@ def _prepare_uploads(files: list[UploadedDocument], raw_dir: Path, pdf_dir: Path
     raw_dir.mkdir(parents=True, exist_ok=True)
     pdf_dir.mkdir(parents=True, exist_ok=True)
     saved: list[dict[str, Any]] = []
-    text_chunks: list[dict[str, Any]] = []
     conversions: list[dict[str, Any]] = []
     metadata_by_source_filename: dict[str, dict[str, Any]] = {}
 
@@ -153,32 +142,17 @@ def _prepare_uploads(files: list[UploadedDocument], raw_dir: Path, pdf_dir: Path
             "bytes": len(upload.content),
         }
 
-        if original_suffix == ".pdf":
-            target = pdf_dir / filename
-            shutil.copy2(path, target)
-            saved_record["parser_input"] = str(target)
-            metadata_by_source_filename[target.name] = per_file_metadata
-        elif original_suffix == ".docx":
-            text = ocr_file_bytes(upload.content, upload.filename, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-            per_file_metadata["parser"] = "docx"
-            per_file_metadata["source_file_extension"] = ".docx"
-            chunks = make_text_chunks(text, per_file_metadata)
-            text_chunks.extend(chunks)
-            saved_record["chunks"] = len(chunks)
-        elif original_suffix == ".txt":
-            text, encoding = _decode_text(upload.content)
-            per_file_metadata["parser"] = "text"
-            per_file_metadata["source_file_extension"] = ".txt"
-            chunks = make_text_chunks(text, per_file_metadata)
-            text_chunks.extend(chunks)
-            saved_record["encoding"] = encoding
-            saved_record["chunks"] = len(chunks)
+        # 모든 문서는 파서(kordoc) -> 부모-자식 청커를 같은 경로로 거친다.
+        target = pdf_dir / filename
+        shutil.copy2(path, target)
+        saved_record["parser_input"] = str(target)
+        per_file_metadata["source_file_extension"] = original_suffix
+        metadata_by_source_filename[target.name] = per_file_metadata
 
         saved.append(saved_record)
 
     return {
         "saved_files": saved,
-        "text_chunks": text_chunks,
         "conversions": conversions,
         "metadata_by_source_filename": metadata_by_source_filename,
     }
@@ -232,7 +206,7 @@ def ingest_uploaded_documents(
             all_chunks: list[dict[str, Any]] = []
             upserted = 0
 
-            if any(pdf_dir.glob("*.pdf")):
+            if any(path.is_file() for path in pdf_dir.iterdir()):
                 pdf_result = ingest_pdf_chunks(
                     pdf_dir=pdf_dir,
                     parsed_dir=parsed_dir,
@@ -249,18 +223,6 @@ def ingest_uploaded_documents(
                 chunker_results.append(pdf_result["chunker"])
                 all_chunks.extend(pdf_result["chunks"])
                 upserted += int(pdf_result["upserted"])
-
-            text_chunks = prepared["text_chunks"]
-            if text_chunks:
-                upserted += upsert_chunks_to_qdrant(
-                    text_chunks,
-                    metadata,
-                    qdrant_url=qdrant_url,
-                    qdrant_api_key=qdrant_api_key,
-                    collection=collection_name,
-                    upsert_batch_size=upsert_batch_size,
-                )
-                all_chunks.extend(text_chunks)
 
             return {
                 "elapsed_sec": round(time.perf_counter() - started, 3),

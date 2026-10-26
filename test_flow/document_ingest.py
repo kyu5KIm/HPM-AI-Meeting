@@ -268,9 +268,61 @@ def run_local_pdf_parser(input_dir: Path, output_dir: Path) -> dict[str, Any]:
     }
 
 
+def run_kordoc_parser(input_dir: Path, output_dir: Path) -> dict[str, Any]:
+    """kordoc으로 PDF·HWP·HWPX·DOCX·이미지·TXT를 블록으로 바꿔 all_blocks.jsonl을 만든다."""
+    from kordoc_parser import KORDOC_VERSION, SUPPORTED_EXTENSIONS, parse_file
+
+    started = time.perf_counter()
+    json_dir = output_dir / "json"
+    manifest_dir = output_dir / "manifests"
+    json_dir.mkdir(parents=True, exist_ok=True)
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+
+    records: list[dict[str, Any]] = []
+    all_blocks: list[dict[str, Any]] = []
+    files = sorted(path for path in input_dir.rglob("*") if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS)
+    for path in files:
+        try:
+            blocks, record = parse_file(path)
+        except Exception as exc:
+            blocks = []
+            record = {
+                "source_pdf": str(path),
+                "source_filename": path.name,
+                "status": "failed",
+                "reason": f"{type(exc).__name__}: {exc}",
+                "blocks": 0,
+            }
+        all_blocks.extend(blocks)
+        records.append(record)
+
+    all_blocks_path = json_dir / "all_blocks.jsonl"
+    _write_jsonl(all_blocks_path, all_blocks)
+    _write_jsonl(manifest_dir / "parse_manifest.jsonl", records)
+    failed = [record for record in records if record.get("status") != "success"]
+    if files and len(failed) == len(files):
+        reasons = "; ".join(f"{r['source_filename']}: {r.get('reason')}" for r in failed)
+        raise RuntimeError(f"Document parsing failed for every file: {reasons}")
+    return {
+        "mode": "kordoc",
+        "backend": f"kordoc {KORDOC_VERSION} + luna_ocr_fallback",
+        "elapsed_sec": round(time.perf_counter() - started, 3),
+        "pdf_count": len(files),
+        "success": len(records) - len(failed),
+        "skipped": 0,
+        "failed": len(failed),
+        "blocks": len(all_blocks),
+        "all_blocks_path": str(all_blocks_path),
+        "records": records,
+    }
+
+
 def run_parser(input_dir: Path, output_dir: Path, require_cuda: bool = True) -> dict[str, Any]:
     _ = require_cuda
-    return run_local_pdf_parser(input_dir, output_dir)
+    # DOCUMENT_PARSER=local 이면 예전 PyMuPDF + pdfplumber 경로(PDF 전용)를 쓴다. 비교 측정용.
+    if os.getenv("DOCUMENT_PARSER", "kordoc").strip().lower() == "local":
+        return run_local_pdf_parser(input_dir, output_dir)
+    return run_kordoc_parser(input_dir, output_dir)
 
 
 def run_chunker(parsed_dir: Path, pdf_dir: Path, chunks_dir: Path) -> dict[str, Any]:
@@ -338,105 +390,6 @@ def read_chunks_jsonl(path: Path) -> list[dict[str, Any]]:
                 if parent_id:
                     chunk["parent_id"] = parent_id
                 chunks.append(chunk)
-    return chunks
-
-
-def make_text_chunks(text: str, metadata: dict[str, Any], *, chunk_size: int | None = None, overlap: int | None = None) -> list[dict[str, Any]]:
-    text = clean_text(text)
-    if not text:
-        return []
-
-    chunk_size = chunk_size or CHUNK_SIZE
-    overlap = min(overlap if overlap is not None else CHUNK_OVERLAP, max(0, chunk_size - 1))
-    chunk_version = f"text_v1_{chunk_size}"
-    source = str(metadata.get("source_path") or metadata.get("title") or metadata.get("source_filename") or "text")
-    doc_ref = str(metadata.get("document_id") or metadata.get("doc_id") or hashlib.sha1(source.encode("utf-8")).hexdigest()[:12])
-
-    try:
-        tokenizer_module = load_script_module(CHUNK_SCRIPT_PATH, "ocr_text_chunk_module")
-        tokenizer = tokenizer_module.Tokenizer(CHUNK_ENCODING)
-    except Exception:
-        tokenizer = None
-
-    def token_count(value: str) -> int:
-        if tokenizer is not None:
-            return int(tokenizer.count(value))
-        return max(1, len(value) // 2)
-
-    def split_long(value: str) -> list[str]:
-        if tokenizer is not None:
-            return tokenizer.split(value, chunk_size, overlap)
-        max_chars = max(1, chunk_size * 2)
-        overlap_chars = max(0, overlap * 2)
-        pieces: list[str] = []
-        start = 0
-        while start < len(value):
-            end = min(len(value), start + max_chars)
-            piece = value[start:end].strip()
-            if piece:
-                pieces.append(piece)
-            if end >= len(value):
-                break
-            start = max(0, end - overlap_chars)
-        return pieces
-
-    paragraphs = [part.strip() for part in re.split(r"\n\s*\n", text) if part.strip()]
-    groups: list[str] = []
-    current = ""
-    for paragraph in paragraphs or [text]:
-        candidate = f"{current}\n\n{paragraph}".strip() if current else paragraph
-        if token_count(candidate) <= chunk_size:
-            current = candidate
-            continue
-        if current:
-            groups.extend(split_long(current))
-        current = paragraph
-    if current:
-        groups.extend(split_long(current))
-
-    chunks: list[dict[str, Any]] = []
-    total = len(groups)
-    for index, chunk_text in enumerate(groups):
-        digest = hashlib.sha1(f"{doc_ref}:{index}:{chunk_text}".encode("utf-8")).hexdigest()[:10]
-        chunk_id = f"document_{doc_ref}::text_chunk_{index:07d}_{digest}"
-        parent_id = f"document_{doc_ref}::parent_text_{index:07d}_{digest}"
-        parent_title = str(metadata.get("title") or metadata.get("source_filename") or "text")
-        chunk_metadata = {
-            **metadata,
-            "chunk_id": chunk_id,
-            "chunk_version": chunk_version,
-            "chunk_type": "text",
-            "parent_id": parent_id,
-            "parent_type": "text",
-            "parent_title": parent_title,
-            "parent_page_start": 1,
-            "parent_page_end": 1,
-            "parent_token_count": token_count(chunk_text),
-            "parent_char_count": len(chunk_text),
-            "child_index": 1,
-            "child_count": 1,
-            "child_token_count": token_count(chunk_text),
-            "child_char_count": len(chunk_text),
-            "page": 1,
-            "page_start": 1,
-            "page_end": 1,
-            "chunk_index": index,
-            "chunk_index_in_group": index + 1,
-            "chunk_count_in_group": total,
-            "chunk_seq_global": index + 1,
-            "token_count": token_count(chunk_text),
-            "char_count": len(chunk_text),
-            "parser": "text",
-        }
-        chunks.append(
-            {
-                "chunk_id": chunk_id,
-                "parent_id": parent_id,
-                "parent_text": chunk_text,
-                "document": chunk_text,
-                "metadata": chunk_metadata,
-            }
-        )
     return chunks
 
 
