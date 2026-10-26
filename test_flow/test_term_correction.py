@@ -37,6 +37,17 @@ class SttTermCorrectionTests(unittest.TestCase):
         self.assertEqual("회의록과 요구사항을 정리합니다.", corrected)
         self.assertEqual([], corrections)
 
+    def test_corrects_misheard_jira_only_in_integration_context(self) -> None:
+        corrected, corrections = apply_stt_term_corrections("질화 연동 일정을 논의하겠습니다.")
+
+        self.assertEqual("Jira 연동 일정을 논의하겠습니다.", corrected)
+        self.assertEqual(1, len(corrections))
+
+        corrected, corrections = apply_stt_term_corrections("표면 질화 처리 공정을 검토했습니다.")
+
+        self.assertEqual("표면 질화 처리 공정을 검토했습니다.", corrected)
+        self.assertEqual([], corrections)
+
     def test_active_rules_are_loaded_from_glossary(self) -> None:
         aliases = {rule.alias for rule in get_active_term_rules()}
 

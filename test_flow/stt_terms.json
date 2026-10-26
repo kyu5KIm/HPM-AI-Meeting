@@ -327,6 +327,13 @@
       "caseSensitive": false
     },
     {
+      "canonical": "Jira 연동",
+      "aliases": ["지라 연동", "지라연동", "질화 연동", "질화연동"],
+      "category": "integration",
+      "caseSensitive": false,
+      "autoCorrect": true
+    },
+    {
       "canonical": "Jira issue",
       "aliases": ["지라 이슈", "jira issue", "Jira 이슈"],
       "category": "integration",
