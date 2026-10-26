@@ -132,7 +132,7 @@ export default function MeetingCreatePage() {
   const handleJiraLink = () => {
     const currentUserId = user?.users_id ?? user?.user_id;
     if (currentUserId) {
-      window.open(`${import.meta.env.VITE_API_BASE_URL}/jira/start/?user_id=${currentUserId}`, "_blank");
+      window.open(`${import.meta.env.VITE_API_BASE_URL}/jira/start/`, "_blank");
     }
     setShowJiraModal(false);
   };

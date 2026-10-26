@@ -144,7 +144,7 @@ export default function ProjectCreatePage() {
       navigate("/login");
       return;
     }
-    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/jira/start/?user_id=${currentUserId}`;
+    window.location.href = `${import.meta.env.VITE_API_BASE_URL}/jira/start/`;
   };
 
   const filteredResults = searchName.trim().length > 0
