@@ -49,6 +49,20 @@ python -m rag_eval.compare rag_eval/results/baseline.json rag_eval/results/kure-
 
 ## 교체 전 기준 측정 순서
 
-1. 교체 전 커밋(`docs/upgrade-plan.md`의 0단계 커밋)에서 기존 컬렉션으로 `--label baseline` 측정
-2. 교체 커밋으로 이동해 새 컬렉션에 다시 적재
-3. 같은 평가 세트로 `--label upgraded` 측정 후 `compare`로 비교
+새 코드에서도 환경 변수만으로 교체 전 구성을 재현할 수 있습니다. 기존 컬렉션(`hpm_project_openai_*`)을 그대로 읽습니다.
+
+```bash
+# 1) 교체 전 구성으로 기준 측정
+TEST_FLOW_EMBEDDING_PROVIDER=openai TEST_FLOW_RERANK_PROVIDER=cohere \
+QDRANT_COLLECTION_PREFIX=hpm_project_openai \
+python -m rag_eval.run_eval --eval-set rag_eval/eval_set.jsonl --label baseline
+
+# 2) 새 구성으로 재적재 (backend: python manage.py reingest_rag)
+
+# 3) 새 구성으로 측정 후 비교
+python -m rag_eval.run_eval --eval-set rag_eval/eval_set.jsonl --label upgraded
+python -m rag_eval.compare rag_eval/results/baseline.json rag_eval/results/upgraded.json
+```
+
+임베딩 제공자만 바꾸면 모델명·차원·검색용 설정·리랭커 모델이 제공자 기본값을 따라갑니다.
+`test_flow/.env`에 `TEST_FLOW_EMBEDDING_MODEL_ID` 같은 값을 직접 적어 두었다면 그 값이 우선하니 함께 바꿔 주세요.
