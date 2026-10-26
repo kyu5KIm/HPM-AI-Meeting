@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import projectIcon from "../../assets/project/folderBig.png";
 import title from "../../assets/kanban/title.png";
 import KanbanColumn from "../../components/project/KanbanColumn";
 import KanbanTaskModal from "../../components/project/KanbanTaskModal";
@@ -10,7 +9,7 @@ import {
   toKanbanFormValues,
 } from "../../constants/kanban";
 import { useAuth } from "../../context/AuthContext";
-import api, {
+import {
   createProjectJiraIssue,
   getProjectDetail,
   getProjectJiraBoard,
@@ -113,7 +112,6 @@ export default function KanbanBoardPage() {
   const [draggingTask, setDraggingTask] = useState<KanbanTask | null>(null);
   const [canManageJira, setCanManageJira] = useState(false);
   const [jiraParentOptions, setJiraParentOptions] = useState<JiraParentOption[]>([]);
-  const [startDate, setStartDate] = useState<string>("");
 
   useEffect(() => {
     if (!user || !projectId) {
@@ -123,7 +121,6 @@ export default function KanbanBoardPage() {
       setCanManageJira(false);
       setLoading(false);
       setError(null);
-      setStartDate("");
       return;
     }
 
@@ -154,19 +151,6 @@ export default function KanbanBoardPage() {
       .finally(() => {
         setLoading(false);
       });
-
-    api.get("/projects/", {
-      params: {
-        user_id: user.users_id,
-      },
-    })
-      .then((res) => {
-        const currentProject = res.data.find((p: any) => p.project_id === projectId);
-        if (currentProject) {
-          setStartDate(currentProject.startDate || "");
-        }
-      })
-      .catch(console.error);
   }, [projectId, user]);
 
   useEffect(() => {

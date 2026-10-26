@@ -1,0 +1,1638 @@
+{
+  "version": 1,
+  "description": "Developer-focused glossary for correcting STT output after transcription. Use canonical as the final normalized term and aliases as likely Korean/phonetic STT variants.",
+  "terms": [
+    {
+      "canonical": "HPM",
+      "aliases": ["에이치피엠", "hpm", "H P M", "회의피하지마"],
+      "category": "project",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "RAG",
+      "aliases": ["랙", "락", "알에이지", "rag", "R A G"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "LLM",
+      "aliases": ["엘엘엠", "llm", "L L M", "대형 언어 모델"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "STT",
+      "aliases": ["에스티티", "stt", "S T T", "음성 인식", "음성인식"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "OCR",
+      "aliases": ["오씨알", "ocr", "O C R", "문자 인식", "문자인식"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "OpenAI",
+      "aliases": ["오픈에이아이", "오픈 AI", "open ai", "openai"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "GPT",
+      "aliases": ["지피티", "gpt", "G P T"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "GPT-4o",
+      "aliases": ["지피티 포오", "지피티 포 오", "gpt 4o", "gpt-4o", "GPT 4o"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "embedding",
+      "aliases": ["임베딩", "엠베딩", "embedding"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "vector DB",
+      "aliases": ["벡터 디비", "벡터 DB", "vector db", "vector database"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Qdrant",
+      "aliases": ["큐드란트", "큐드랜트", "qdrant"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "BM25",
+      "aliases": ["비엠 이십오", "비엠25", "bm25", "B M 25"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "reranker",
+      "aliases": ["리랭커", "리 랭커", "reranker", "재순위화"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "diarization",
+      "aliases": ["다이어리제이션", "화자 분리", "화자분리", "speaker diarization"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "transcript",
+      "aliases": ["트랜스크립트", "전사문", "전사 텍스트", "녹취록"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "prompt",
+      "aliases": ["프롬프트", "프롬트", "prompt"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "token",
+      "aliases": ["토큰", "token"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "API",
+      "aliases": ["에이피아이", "api", "A P I"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "REST API",
+      "aliases": ["레스트 API", "레스트 에이피아이", "rest api"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "FastAPI",
+      "aliases": ["패스트 API", "패스트에이피아이", "fast api", "fastapi"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Django",
+      "aliases": ["장고", "django"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Django REST Framework",
+      "aliases": ["디알에프", "DRF", "django rest framework", "장고 레스트 프레임워크"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "JWT",
+      "aliases": ["제이더블유티", "jwt", "J W T"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "OAuth",
+      "aliases": ["오어스", "오auth", "oauth", "O Auth"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "CORS",
+      "aliases": ["코스", "콜스", "cors", "C O R S"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "CSRF",
+      "aliases": ["씨에스알에프", "csrf", "C S R F"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "endpoint",
+      "aliases": ["엔드포인트", "앤드포인트", "end point", "endpoint"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "payload",
+      "aliases": ["페이로드", "payload"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "webhook",
+      "aliases": ["웹훅", "웹 후크", "web hook", "webhook"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "React",
+      "aliases": ["리액트", "react"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "TypeScript",
+      "aliases": ["타입스크립트", "type script", "typescript"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Vite",
+      "aliases": ["바이트", "비트", "vite"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Node.js",
+      "aliases": ["노드", "노드제이에스", "node js", "node.js"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "npm",
+      "aliases": ["엔피엠", "npm", "N P M"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Axios",
+      "aliases": ["액시오스", "악시오스", "axios"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Docker",
+      "aliases": ["도커", "docker"],
+      "category": "infra",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Docker Compose",
+      "aliases": ["도커 컴포즈", "docker compose", "docker-compose"],
+      "category": "infra",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Nginx",
+      "aliases": ["엔진엑스", "엔진 엑스", "nginx"],
+      "category": "infra",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "EC2",
+      "aliases": ["이씨투", "EC 투", "ec2", "E C 2"],
+      "category": "aws",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "RDS",
+      "aliases": ["알디에스", "rds", "R D S"],
+      "category": "aws",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "S3",
+      "aliases": ["에스쓰리", "에스3", "s3", "S 3"],
+      "category": "aws",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "S3 bucket",
+      "aliases": ["에스쓰리 버킷", "S3 버킷", "s3 bucket", "버킷"],
+      "category": "aws",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "SES",
+      "aliases": ["에스이에스", "ses", "S E S"],
+      "category": "aws",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "IAM",
+      "aliases": ["아이엠", "iam", "I A M"],
+      "category": "aws",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Route 53",
+      "aliases": ["루트 오십삼", "루트53", "route 53"],
+      "category": "aws",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "CloudShell",
+      "aliases": ["클라우드쉘", "클라우드 셸", "cloud shell", "cloudshell"],
+      "category": "aws",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "security group",
+      "aliases": ["시큐리티 그룹", "보안 그룹", "security group"],
+      "category": "aws",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "SSH",
+      "aliases": ["에스에스에이치", "ssh", "S S H"],
+      "category": "infra",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "HTTPS",
+      "aliases": ["에이치티티피에스", "https", "H T T P S"],
+      "category": "infra",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "SSL",
+      "aliases": ["에스에스엘", "ssl", "S S L"],
+      "category": "infra",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "MySQL",
+      "aliases": ["마이SQL", "마이에스큐엘", "mysql", "my sql"],
+      "category": "database",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "migration",
+      "aliases": ["마이그레이션", "마이그래이션", "migration"],
+      "category": "database",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "seed data",
+      "aliases": ["시드 데이터", "씨드 데이터", "seed data"],
+      "category": "database",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Jira",
+      "aliases": ["지라", "jira"],
+      "category": "integration",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Jira issue",
+      "aliases": ["지라 이슈", "jira issue", "Jira 이슈"],
+      "category": "integration",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Kanban",
+      "aliases": ["칸반", "칸반보드", "kanban"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "sprint",
+      "aliases": ["스프린트", "sprint"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "backlog",
+      "aliases": ["백로그", "backlog"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "assignee",
+      "aliases": ["어사이니", "담당자", "assignee"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Git",
+      "aliases": ["깃", "git"],
+      "category": "dev_workflow",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "GitHub",
+      "aliases": ["깃허브", "github"],
+      "category": "dev_workflow",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "commit",
+      "aliases": ["커밋", "commit"],
+      "category": "dev_workflow",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "branch",
+      "aliases": ["브랜치", "branch"],
+      "category": "dev_workflow",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "merge",
+      "aliases": ["머지", "merge"],
+      "category": "dev_workflow",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "pull request",
+      "aliases": ["풀 리퀘스트", "피알", "PR", "pull request"],
+      "category": "dev_workflow",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "deploy",
+      "aliases": ["디플로이", "배포", "deploy"],
+      "category": "dev_workflow",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Whisper",
+      "aliases": ["위스퍼", "whisper"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "speech-to-text",
+      "aliases": ["스피치 투 텍스트", "speech to text", "speech-to-text", "음성 텍스트 변환"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "text-to-speech",
+      "aliases": ["텍스트 투 스피치", "text to speech", "text-to-speech", "음성 합성"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "semantic search",
+      "aliases": ["시맨틱 서치", "의미 기반 검색", "의미 검색", "semantic search"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "hybrid search",
+      "aliases": ["하이브리드 서치", "하이브리드 검색", "hybrid search"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "dense retrieval",
+      "aliases": ["덴스 리트리벌", "dense retrieval", "밀집 검색"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "sparse retrieval",
+      "aliases": ["스파스 리트리벌", "sparse retrieval", "희소 검색"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "cosine similarity",
+      "aliases": ["코사인 유사도", "코사인 시밀러리티", "cosine similarity"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "chunking",
+      "aliases": ["청킹", "청크 분할", "chunking", "chunk"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "chunk overlap",
+      "aliases": ["청크 오버랩", "chunk overlap", "오버랩"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "metadata",
+      "aliases": ["메타데이터", "메타 데이터", "metadata"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "source attribution",
+      "aliases": ["소스 어트리뷰션", "출처 표기", "근거 출처", "source attribution"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "grounding",
+      "aliases": ["그라운딩", "근거 기반 생성", "grounding"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "hallucination",
+      "aliases": ["할루시네이션", "환각", "hallucination"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "context window",
+      "aliases": ["컨텍스트 윈도우", "문맥 창", "context window"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "prompt engineering",
+      "aliases": ["프롬프트 엔지니어링", "prompt engineering"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "system prompt",
+      "aliases": ["시스템 프롬프트", "system prompt"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "temperature",
+      "aliases": ["템퍼러처", "온도값", "temperature"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "function calling",
+      "aliases": ["펑션 콜링", "함수 호출", "function calling"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "tool calling",
+      "aliases": ["툴 콜링", "도구 호출", "tool calling"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "streaming",
+      "aliases": ["스트리밍", "streaming"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "collection",
+      "aliases": ["컬렉션", "collection"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "similarity score",
+      "aliases": ["유사도 점수", "시밀러리티 스코어", "similarity score"],
+      "category": "ai",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "authentication",
+      "aliases": ["어센티케이션", "인증", "authentication"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "authorization",
+      "aliases": ["어소라이제이션", "인가", "authorization"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "RBAC",
+      "aliases": ["알백", "알비에이씨", "역할 기반 접근 제어", "rbac", "R B A C"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "access token",
+      "aliases": ["액세스 토큰", "access token"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "refresh token",
+      "aliases": ["리프레시 토큰", "refresh token"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Bearer token",
+      "aliases": ["베어러 토큰", "bearer token"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "session",
+      "aliases": ["세션", "session"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "cookie",
+      "aliases": ["쿠키", "cookie"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "SameSite",
+      "aliases": ["세임사이트", "same site", "samesite"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "XSS",
+      "aliases": ["엑스에스에스", "xss", "크로스 사이트 스크립팅"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "SQL injection",
+      "aliases": ["SQL 인젝션", "에스큐엘 인젝션", "sql injection"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "SSRF",
+      "aliases": ["에스에스알에프", "ssrf", "서버 사이드 요청 위조"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "rate limit",
+      "aliases": ["레이트 리밋", "요청 제한", "rate limit"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "audit log",
+      "aliases": ["감사 로그", "오딧 로그", "audit log"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "PII",
+      "aliases": ["피아이아이", "개인 식별 정보", "개인정보", "pii", "P I I"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "encryption",
+      "aliases": ["인크립션", "암호화", "encryption"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "hashing",
+      "aliases": ["해싱", "해시 처리", "hashing"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "salting",
+      "aliases": ["솔팅", "salt 처리", "salting"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "TLS",
+      "aliases": ["티엘에스", "tls", "T L S"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "secret key",
+      "aliases": ["시크릿 키", "비밀 키", "secret key"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "environment variable",
+      "aliases": ["환경 변수", "env 변수", "environment variable"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "least privilege",
+      "aliases": ["최소 권한", "최소 권한 원칙", "least privilege"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "bucket policy",
+      "aliases": ["버킷 정책", "bucket policy"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "OAuth redirect URI",
+      "aliases": ["OAuth 리다이렉트 URI", "오어스 리다이렉트 유알아이", "redirect uri"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "OAuth scope",
+      "aliases": ["OAuth 스코프", "권한 범위", "scope"],
+      "category": "security",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "component",
+      "aliases": ["컴포넌트", "component"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "hook",
+      "aliases": ["훅", "hook"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "useEffect",
+      "aliases": ["유즈 이펙트", "use effect", "useEffect"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "useState",
+      "aliases": ["유즈 스테이트", "use state", "useState"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "React Router",
+      "aliases": ["리액트 라우터", "react router"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "state management",
+      "aliases": ["상태 관리", "state management"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "props",
+      "aliases": ["프롭스", "props"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "rendering",
+      "aliases": ["렌더링", "rendering"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "bundle",
+      "aliases": ["번들", "bundle"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "chunk",
+      "aliases": ["청크", "chunk"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "code splitting",
+      "aliases": ["코드 스플리팅", "코드 분할", "code splitting"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "lazy loading",
+      "aliases": ["레이지 로딩", "지연 로딩", "lazy loading"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "debounce",
+      "aliases": ["디바운스", "debounce"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "throttle",
+      "aliases": ["스로틀", "throttle"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "modal",
+      "aliases": ["모달", "modal"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "toast",
+      "aliases": ["토스트", "toast"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "pagination",
+      "aliases": ["페이지네이션", "페이징", "pagination"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "drag and drop",
+      "aliases": ["드래그 앤 드롭", "드래그 드롭", "drag and drop"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "responsive design",
+      "aliases": ["반응형 디자인", "responsive design"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Tailwind CSS",
+      "aliases": ["테일윈드", "테일윈드 CSS", "tailwind css"],
+      "category": "frontend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "serializer",
+      "aliases": ["시리얼라이저", "serializer"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "viewset",
+      "aliases": ["뷰셋", "view set", "viewset"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "middleware",
+      "aliases": ["미들웨어", "middle ware", "middleware"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "ORM",
+      "aliases": ["오알엠", "orm", "O R M"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "query parameter",
+      "aliases": ["쿼리 파라미터", "query parameter", "query param"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "status code",
+      "aliases": ["상태 코드", "status code"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "401 Unauthorized",
+      "aliases": ["401", "사공일", "unauthorized", "인증 실패"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "403 Forbidden",
+      "aliases": ["403", "사공삼", "forbidden", "권한 없음"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "500 Internal Server Error",
+      "aliases": ["500", "오백 에러", "internal server error", "서버 내부 오류"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "database transaction",
+      "aliases": ["트랜잭션", "DB 트랜잭션", "database transaction"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "validation",
+      "aliases": ["밸리데이션", "유효성 검사", "validation"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "exception handling",
+      "aliases": ["예외 처리", "exception handling"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "permission class",
+      "aliases": ["퍼미션 클래스", "권한 클래스", "permission class"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "service layer",
+      "aliases": ["서비스 레이어", "서비스 계층", "service layer"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "health check",
+      "aliases": ["헬스 체크", "상태 확인", "health check"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "multipart upload",
+      "aliases": ["멀티파트 업로드", "multipart upload"],
+      "category": "backend",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "project manager",
+      "aliases": ["프로젝트 매니저", "피엠", "PM", "project manager"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "product manager",
+      "aliases": ["프로덕트 매니저", "프로덕트 매니져", "PM", "product manager"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "project owner",
+      "aliases": ["프로젝트 오너", "project owner"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "stakeholder",
+      "aliases": ["스테이크홀더", "이해관계자", "stakeholder"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "requirement",
+      "aliases": ["요구사항", "리콰이어먼트", "requirement"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "requirement definition",
+      "aliases": ["요구사항 정의", "요구사항 정의서", "requirement definition"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "scope",
+      "aliases": ["스코프", "범위", "업무 범위", "scope"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "scope creep",
+      "aliases": ["스코프 크립", "범위 증가", "요구사항 범위 증가", "scope creep"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "milestone",
+      "aliases": ["마일스톤", "마일스톤 일정", "milestone"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "roadmap",
+      "aliases": ["로드맵", "roadmap"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "timeline",
+      "aliases": ["타임라인", "일정표", "timeline"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "WBS",
+      "aliases": ["더블유비에스", "작업 분해 구조", "wbs", "W B S"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Gantt chart",
+      "aliases": ["간트 차트", "갠트 차트", "gantt chart"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "deliverable",
+      "aliases": ["딜리버러블", "산출물", "deliverable"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "acceptance criteria",
+      "aliases": ["인수 조건", "수용 기준", "acceptance criteria"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "user story",
+      "aliases": ["유저 스토리", "사용자 스토리", "user story"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "epic",
+      "aliases": ["에픽", "epic"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "task",
+      "aliases": ["태스크", "작업", "task"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "subtask",
+      "aliases": ["서브태스크", "하위 작업", "subtask"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "priority",
+      "aliases": ["우선순위", "프라이어리티", "priority"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "severity",
+      "aliases": ["심각도", "세버리티", "severity"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "blocker",
+      "aliases": ["블로커", "차단 이슈", "blocker"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "dependency",
+      "aliases": ["디펜던시", "의존성", "선후행 관계", "dependency"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "risk management",
+      "aliases": ["리스크 관리", "위험 관리", "risk management"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "issue tracking",
+      "aliases": ["이슈 트래킹", "이슈 추적", "issue tracking"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "change request",
+      "aliases": ["변경 요청", "체인지 리퀘스트", "change request"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "decision log",
+      "aliases": ["의사결정 로그", "결정 사항 기록", "decision log"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "action item",
+      "aliases": ["액션 아이템", "후속 조치", "action item"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "meeting minutes",
+      "aliases": ["회의록", "미팅 미닛", "meeting minutes"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "R&R",
+      "aliases": ["알앤알", "역할과 책임", "역할 책임", "R and R"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "resource allocation",
+      "aliases": ["리소스 할당", "자원 배분", "resource allocation"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "capacity",
+      "aliases": ["캐파", "캐퍼시티", "수용 가능 업무량", "capacity"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "due date",
+      "aliases": ["듀데이트", "마감일", "기한", "due date"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "ETA",
+      "aliases": ["이에이티", "예상 완료 시간", "eta", "E T A"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "KPI",
+      "aliases": ["케이피아이", "핵심 성과 지표", "kpi", "K P I"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "OKR",
+      "aliases": ["오케이알", "목표와 핵심 결과", "okr", "O K R"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "MVP",
+      "aliases": ["엠브이피", "최소 기능 제품", "mvp", "M V P"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "release plan",
+      "aliases": ["릴리즈 플랜", "배포 계획", "release plan"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "sprint planning",
+      "aliases": ["스프린트 플래닝", "스프린트 계획", "sprint planning"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "daily scrum",
+      "aliases": ["데일리 스크럼", "데일리 미팅", "daily scrum"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "retrospective",
+      "aliases": ["회고", "레트로스펙티브", "retrospective"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "burndown chart",
+      "aliases": ["번다운 차트", "burndown chart"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "definition of done",
+      "aliases": ["완료의 정의", "DOD", "definition of done"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "definition of ready",
+      "aliases": ["준비의 정의", "DOR", "definition of ready"],
+      "category": "project_management",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "data analysis",
+      "aliases": ["데이터 분석", "data analysis"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "exploratory data analysis",
+      "aliases": ["탐색적 데이터 분석", "EDA", "exploratory data analysis"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "EDA",
+      "aliases": ["이디에이", "탐색적 분석", "eda", "E D A"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "dataset",
+      "aliases": ["데이터셋", "데이터 세트", "dataset"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "data preprocessing",
+      "aliases": ["데이터 전처리", "전처리", "data preprocessing"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "data cleaning",
+      "aliases": ["데이터 클리닝", "데이터 정제", "data cleaning"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "missing value",
+      "aliases": ["결측치", "누락값", "missing value"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "outlier",
+      "aliases": ["이상치", "아웃라이어", "outlier"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "feature",
+      "aliases": ["피처", "특성", "feature"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "feature engineering",
+      "aliases": ["피처 엔지니어링", "특성 공학", "feature engineering"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "normalization",
+      "aliases": ["정규화", "노멀라이제이션", "normalization"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "standardization",
+      "aliases": ["표준화", "스탠더다이제이션", "standardization"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "correlation",
+      "aliases": ["상관관계", "상관 분석", "correlation"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "regression",
+      "aliases": ["회귀", "회귀 분석", "regression"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "classification",
+      "aliases": ["분류", "classification"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "clustering",
+      "aliases": ["클러스터링", "군집화", "clustering"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "time series",
+      "aliases": ["시계열", "타임 시리즈", "time series"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "dashboard",
+      "aliases": ["대시보드", "dashboard"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "visualization",
+      "aliases": ["시각화", "비주얼라이제이션", "visualization"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "KPI dashboard",
+      "aliases": ["KPI 대시보드", "케이피아이 대시보드", "kpi dashboard"],
+      "category": "data_analysis",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "big data",
+      "aliases": ["빅데이터", "빅 데이터", "big data"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "data lake",
+      "aliases": ["데이터 레이크", "data lake"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "data warehouse",
+      "aliases": ["데이터 웨어하우스", "DW", "data warehouse"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "ETL",
+      "aliases": ["이티엘", "추출 변환 적재", "etl", "E T L"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "ELT",
+      "aliases": ["이엘티", "추출 적재 변환", "elt", "E L T"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "data pipeline",
+      "aliases": ["데이터 파이프라인", "파이프라인", "data pipeline"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "batch processing",
+      "aliases": ["배치 처리", "batch processing"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "stream processing",
+      "aliases": ["스트림 처리", "스트리밍 처리", "stream processing"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Apache Spark",
+      "aliases": ["아파치 스파크", "스파크", "apache spark"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Hadoop",
+      "aliases": ["하둡", "hadoop"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Kafka",
+      "aliases": ["카프카", "kafka"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "Airflow",
+      "aliases": ["에어플로우", "airflow"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "data mart",
+      "aliases": ["데이터 마트", "data mart"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "data governance",
+      "aliases": ["데이터 거버넌스", "data governance"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "data lineage",
+      "aliases": ["데이터 리니지", "데이터 계보", "data lineage"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "schema",
+      "aliases": ["스키마", "schema"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "partitioning",
+      "aliases": ["파티셔닝", "파티션 분할", "partitioning"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "sharding",
+      "aliases": ["샤딩", "sharding"],
+      "category": "big_data",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "data science",
+      "aliases": ["데이터 사이언스", "데이터사이언스", "data science"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "machine learning",
+      "aliases": ["머신러닝", "머신 러닝", "machine learning"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "deep learning",
+      "aliases": ["딥러닝", "딥 러닝", "deep learning"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "supervised learning",
+      "aliases": ["지도학습", "지도 학습", "supervised learning"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "unsupervised learning",
+      "aliases": ["비지도학습", "비지도 학습", "unsupervised learning"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "model training",
+      "aliases": ["모델 학습", "모델 트레이닝", "model training"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "model inference",
+      "aliases": ["모델 추론", "인퍼런스", "model inference"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "hyperparameter",
+      "aliases": ["하이퍼파라미터", "하이퍼 파라미터", "hyperparameter"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "overfitting",
+      "aliases": ["오버피팅", "과적합", "overfitting"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "underfitting",
+      "aliases": ["언더피팅", "과소적합", "underfitting"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "train test split",
+      "aliases": ["트레인 테스트 스플릿", "학습 테스트 분리", "train test split"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "cross validation",
+      "aliases": ["교차 검증", "크로스 밸리데이션", "cross validation"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "accuracy",
+      "aliases": ["정확도", "accuracy"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "precision",
+      "aliases": ["정밀도", "precision"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "recall",
+      "aliases": ["재현율", "리콜", "recall"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "F1 score",
+      "aliases": ["에프원 스코어", "F1 점수", "f1 score"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "confusion matrix",
+      "aliases": ["혼동 행렬", "컨퓨전 매트릭스", "confusion matrix"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "AUC",
+      "aliases": ["에이유씨", "auc", "A U C"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "ROC curve",
+      "aliases": ["알오씨 커브", "ROC 곡선", "roc curve"],
+      "category": "data_science",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "QA",
+      "aliases": ["큐에이", "품질 보증", "qa", "Q A"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "quality assurance",
+      "aliases": ["퀄리티 어슈어런스", "품질 보증", "quality assurance"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "test case",
+      "aliases": ["테스트 케이스", "test case"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "test scenario",
+      "aliases": ["테스트 시나리오", "test scenario"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "test plan",
+      "aliases": ["테스트 계획", "test plan"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "unit test",
+      "aliases": ["유닛 테스트", "단위 테스트", "unit test"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "integration test",
+      "aliases": ["통합 테스트", "integration test"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "end-to-end test",
+      "aliases": ["이투이 테스트", "E2E 테스트", "end to end test", "end-to-end test"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "regression test",
+      "aliases": ["회귀 테스트", "리그레션 테스트", "regression test"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "smoke test",
+      "aliases": ["스모크 테스트", "smoke test"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "sanity test",
+      "aliases": ["새니티 테스트", "sanity test"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "UAT",
+      "aliases": ["유에이티", "사용자 인수 테스트", "uat", "U A T"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "bug report",
+      "aliases": ["버그 리포트", "버그 보고서", "bug report"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "reproduction steps",
+      "aliases": ["재현 절차", "재현 스텝", "reproduction steps"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "expected result",
+      "aliases": ["기대 결과", "expected result"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "actual result",
+      "aliases": ["실제 결과", "actual result"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "defect",
+      "aliases": ["디펙트", "결함", "defect"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "test coverage",
+      "aliases": ["테스트 커버리지", "test coverage"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "load test",
+      "aliases": ["부하 테스트", "로드 테스트", "load test"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "performance test",
+      "aliases": ["성능 테스트", "performance test"],
+      "category": "qa",
+      "caseSensitive": false
+    },
+    {
+      "canonical": "acceptance test",
+      "aliases": ["인수 테스트", "acceptance test"],
+      "category": "qa",
+      "caseSensitive": false
+    }
+  ]
+}

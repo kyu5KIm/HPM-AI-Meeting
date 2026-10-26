@@ -23,6 +23,7 @@ from config import (
 )
 from model_runtime import cleanup_cuda, ocr_file_bytes, transcribe_audio_file
 from schemas import TextResponse
+from term_correction import apply_stt_term_corrections, merge_term_corrections
 
 
 router = APIRouter()
@@ -109,6 +110,7 @@ def transcribe_audio_bytes(
         participant_list = [name.strip() for name in participants.split(",") if name.strip()]
         full_text_lines: list[str] = []
         normalized_segments: list[dict[str, Any]] = []
+        term_corrections: list[dict[str, Any]] = []
 
         if participant_list:
             full_text_lines.append("[참석자]")
@@ -133,6 +135,8 @@ def transcribe_audio_bytes(
             text = str(seg.get("text") or seg.get("content") or "").strip()
             if not text:
                 continue
+            text, corrections = apply_stt_term_corrections(text)
+            term_corrections.extend(corrections)
             full_text_lines.append(f"[{start_ts}] {speaker_id}: {text}")
             normalized_segments.append(
                 {
@@ -148,6 +152,8 @@ def transcribe_audio_bytes(
         if not normalized_segments:
             text = str(result.get("text") or "").strip()
             if text:
+                text, corrections = apply_stt_term_corrections(text)
+                term_corrections.extend(corrections)
                 full_text_lines.append(f"[00:00] SPEAKER_00: {text}")
                 normalized_segments.append(
                     {
@@ -165,6 +171,7 @@ def transcribe_audio_bytes(
             "segments": normalized_segments,
             "utterances": normalized_segments,
             "language": result.get("language") or language,
+            "term_corrections": merge_term_corrections(term_corrections),
         }
     except Exception:
         cleanup_cuda()

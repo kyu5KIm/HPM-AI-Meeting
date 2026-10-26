@@ -58,9 +58,10 @@ export default function Layout() {
   if (isNoLayout) {
       const showHeader = location.pathname === "/projects" || location.pathname === "/admin/users";
       const isChangePassword = location.pathname === "/change-password";
+      const isAdminUsers = location.pathname === "/admin/users";
       return (
         <div
-          className={`w-full min-h-screen ${DESIGN.BACKGROUND_COLORS.ivory} flex flex-col bg-no-repeat`}
+          className={`w-full min-h-screen ${isAdminUsers ? DESIGN.BACKGROUND_COLORS.background : DESIGN.BACKGROUND_COLORS.ivory} flex flex-col bg-no-repeat`}
           style={
             isChangePassword
               ? {

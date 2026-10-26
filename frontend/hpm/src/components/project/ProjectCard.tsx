@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ComponentPropsWithoutRef,
-  type MouseEvent,
-} from "react";
+import { type ComponentPropsWithoutRef, type MouseEvent } from "react";
 import * as DESIGN from "../../constants/design";
 import folder from "../../assets/project/folder.png";
 import trash from "../../assets/project/trash.png";
@@ -34,35 +28,14 @@ export default function ProjectCard({
   onDelete,
   ...props
 }: ProjectCardProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const visibleMembers = project.members?.slice(0, VISIBLE_MEMBER_COUNT) ?? [];
   const remainingMemberCount = Math.max(
     (project.members?.length ?? 0) - VISIBLE_MEMBER_COUNT,
     0,
   );
 
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const handleDocumentClick = (event: globalThis.MouseEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleDocumentClick);
-    return () => document.removeEventListener("mousedown", handleDocumentClick);
-  }, [menuOpen]);
-
-  const handleMenuClick = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    setMenuOpen((current) => !current);
-  };
-
   const handleDeleteClick = (event: MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
-    setMenuOpen(false);
     onDelete?.(project);
   };
 
@@ -72,7 +45,7 @@ export default function ProjectCard({
       className={`${DESIGN.BACKGROUND_COLORS.grayLight} ${DESIGN.PADDING_SIZES.xl} hover:shadow-md ${DESIGN.BORDER_COLORS.gray} hover:border-[#6A1FEB] ${DESIGN.RADIUS_SIZES.xl} relative flex min-h-[224px] w-[352px] flex-col ${className}`}
     >
       {canDelete ? (
-        <div ref={menuRef} className="absolute right-[24px] top-[24px] z-10">
+        <div className="absolute right-[24px] top-[24px] z-10">
           <button
             type="button"
             aria-label="프로젝트 삭제"

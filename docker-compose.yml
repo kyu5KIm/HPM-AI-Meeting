@@ -1,6 +1,6 @@
 # ================================================================
 # docker-compose.yml
-# 역할: db + backend + frontend + nginx를 한 번에 실행하는 파일
+# 역할: db + backend + frontend + nginx + test_flow FastAPI를 한 번에 실행하는 파일
 #
 # 실행: docker-compose up --build   (처음 실행 시 빌드 포함)
 #       docker-compose up            (이후 실행)
@@ -34,6 +34,26 @@ services:
   #     retries: 10                    # 10번까지 재시도
 
 
+  # ── test_flow FastAPI ───────────────────────────────────────
+  # 역할: STT, OCR, 회의록/안건/준비자료 생성, 챗봇/RAG API 제공
+  testflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.testflow
+    container_name: hpm_testflow
+    restart: unless-stopped
+    env_file:
+      - test_flow/.env
+    expose:
+      - "8500"                      # compose 내부 통신용. 외부에는 공개하지 않음
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8500/health', timeout=5).read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+
   # ── Django 백엔드 ────────────────────────────────────────────
   # 역할: API 처리, DB 조회, RunPod AI 서버 호출 등
   backend:
@@ -43,16 +63,23 @@ services:
     container_name: hpm_backend
     restart: unless-stopped
     env_file:
-      - .env                         # 기존 .env 파일 그대로 사용
+      - backend/hpm/.env             # backend 환경변수 사용
     environment:
-                                     # Docker 안에서는 컨테이너 이름이 주소가 됨
+      # Docker 안에서는 컨테이너 이름이 주소가 됨
       DB_PORT: "3306"
+      RUNPOD_CORE_BASE_URL: "http://testflow:8500"
+      RUNPOD_STT_BASE_URL: "http://testflow:8500"
+      RUNPOD_OCR_BASE_URL: "http://testflow:8500"
+      RUNPOD_PARSED_BASE_URL: "http://testflow:8500"
+      RAG_SERVER_URL: "http://testflow:8500/chat"
     ports:
       - "8000:8000"                  # 내 컴퓨터 8000 → 컨테이너 8000
                                      # nginx가 /api/ 요청을 여기로 전달
     volumes:
       - ./backend/hpm/media:/app/media  # 업로드 파일 영속화
                                         # (녹음파일, 문서 등 컨테이너 꺼져도 유지)
+    depends_on:
+      - testflow
     # depends_on:
     #   db:
     #     condition: service_healthy   # DB 완전히 뜬 다음에 backend 시작
@@ -66,7 +93,7 @@ services:
       context: .       # 소스코드 위치
       dockerfile: Dockerfile.frontend  # 사용할 Dockerfile
       args:
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     container_name: hpm_frontend
     restart: unless-stopped
     ports:
