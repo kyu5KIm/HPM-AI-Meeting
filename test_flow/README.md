@@ -8,12 +8,16 @@
 
 | 기능 | test_flow 모델 |
 | --- | --- |
-| LLM | `gpt-4.1-mini` |
-| OCR | `gpt-4.1-mini` vision |
+| LLM | `gpt-5.6-luna` (GPT-5 계열 추론 모델, `TEST_FLOW_REASONING_EFFORT`로 추론 강도 조절) |
+| OCR | `gpt-5.6-luna` vision |
 | STT | `gpt-4o-transcribe-diarize` |
-| Embedding | `text-embedding-3-small` |
-| PDF parser | `PyMuPDF` + `pdfplumber`, 필요 시 OpenAI OCR fallback |
+| Embedding | KURE API `kure-v3` (1024차원, 질문/문서 `input_type` 구분) |
+| Reranker | KURE API `kure-reranker-nano` (`TEST_FLOW_RERANK_PROVIDER=cohere`로 Cohere 사용 가능) |
+| PDF parser | `PyMuPDF` + `pdfplumber`, 필요 시 OCR fallback |
 | Vector DB | Qdrant 유지 |
+
+KURE API 키는 https://kure.kullm.ai 에서 GitHub 로그인으로 발급받아 `test_flow/.env`의 `KURE_API_KEY`에 넣습니다.
+KURE API는 요청당 텍스트 8개, 기본 분당 60회·분당 200,000토큰·하루 4,000,000토큰 한도가 있어 `kure_api.py`가 요청 간격 조절과 429 재시도를 처리합니다.
 
 `test_flow/.env`는 기존 `ai/vllm/.env`, `ai/stt/.env`, `ai/ocr/.env`, `ai/parsed/.env` 내용을 합쳐 둔 파일입니다. 값은 노출하지 않았고, 실행 시 `config.py`에서 모델 provider만 OpenAI로 고정합니다.
 
@@ -76,6 +80,6 @@ RAG_SERVER_URL=http://localhost:8500/chat
 
 ## 주의
 
-- 기존 로컬/HF/vLLM 모델 값이 `.env`에 남아 있어도 `test_flow`는 기본적으로 OpenAI 모델을 사용합니다.
-- OpenAI embedding으로 새로 적재한 Qdrant collection과 기존 `jhgan/ko-sroberta` collection은 벡터 차원이 달라 섞어 쓰면 안 됩니다.
+- 기존 로컬/HF/vLLM 모델 값이 `.env`에 남아 있어도 `test_flow`는 `TEST_FLOW_*` 설정을 우선합니다. 예전 `.env`에 `TEST_FLOW_EMBEDDING_PROVIDER=openai` 같은 값이 남아 있으면 새 기본값보다 우선하니 지워 주세요.
+- 임베딩 모델마다 벡터 차원이 달라 컬렉션을 섞어 쓰면 안 됩니다. KURE-v3 컬렉션은 기본 이름이 `hpm_project_kure_*`라서 기존 `hpm_project_openai_*`와 분리됩니다.
 - 로컬 문서 파싱은 `PyMuPDF`, `pdfplumber`, OpenAI OCR fallback 조합으로 동작합니다.
