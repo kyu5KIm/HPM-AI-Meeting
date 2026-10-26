@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 APP_DIR = Path(__file__).resolve().parent
-KORDOC_VERSION = "4.24.1"
+KORDOC_VERSION = "4.24.9"
 KORDOC_EXTENSIONS = {".pdf", ".hwp", ".hwpx", ".docx", ".png", ".jpg", ".jpeg", ".webp"}
 TEXT_EXTENSIONS = {".txt"}
 SUPPORTED_EXTENSIONS = KORDOC_EXTENSIONS | TEXT_EXTENSIONS

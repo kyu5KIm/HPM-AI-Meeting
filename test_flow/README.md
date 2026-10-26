@@ -13,7 +13,7 @@
 | STT | `gpt-4o-transcribe-diarize` |
 | Embedding | KURE API `kure-v3` (1024차원, 질문/문서 `input_type` 구분) |
 | Reranker | KURE API `kure-reranker-nano` (`TEST_FLOW_RERANK_PROVIDER=cohere`로 Cohere 사용 가능) |
-| 문서 파서 | `kordoc` 4.24.1 (PDF·HWP·HWPX·DOCX·이미지), 스캔 페이지는 kordoc 로컬 OCR, 부족한 페이지만 Luna 보조 |
+| 문서 파서 | `kordoc` 4.24.9 (PDF·HWP·HWPX·DOCX·이미지), 스캔 페이지는 kordoc 로컬 OCR, 부족한 페이지만 Luna 보조 |
 | Vector DB | Qdrant 유지 |
 
 KURE API 키는 https://kure.kullm.ai 에서 GitHub 로그인으로 발급받아 `test_flow/.env`의 `KURE_API_KEY`에 넣습니다.
