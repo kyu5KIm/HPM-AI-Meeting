@@ -34,7 +34,7 @@ backend/
 - Django REST Framework
 - Simple JWT
 - django-cors-headers
-- MySQL
+- PostgreSQL (Supabase)
 - boto3 / S3
 - AWS SES
 - Jira REST API
@@ -68,11 +68,13 @@ VITE_API_BASE_URL=http://localhost:8000/api
 | 이름 | 설명 | 예시 |
 | --- | --- | --- |
 | `SECRET_KEY` | Django secret key | 운영에서는 필수 |
-| `DB_NAME` | MySQL DB 이름 | `hpm_db` |
-| `DB_USER` | MySQL 사용자 | `root` |
-| `DB_PASSWORD` | MySQL 비밀번호 | 로컬 전용 값 |
-| `DB_HOST` | MySQL host | `localhost` |
-| `DB_PORT` | MySQL port | `3306` |
+| `DB_NAME` | PostgreSQL DB 이름 | `postgres` |
+| `DB_USER` | PostgreSQL 사용자 | `postgres.<project-ref>` (Supabase pooler) |
+| `DB_PASSWORD` | PostgreSQL 비밀번호 | Supabase DB 비밀번호 |
+| `DB_HOST` | PostgreSQL host | `aws-0-ap-northeast-2.pooler.supabase.com` |
+| `DB_PORT` | PostgreSQL port | `5432` |
+| `DB_SSLMODE` | SSL 모드 | Supabase는 `require`, 로컬은 `prefer` |
+| `DB_CONN_MAX_AGE` | DB 연결 재사용 시간(초) | `60` |
 | `DEFAULT_USER_PASSWORD` | 관리자 생성 사용자 초기 비밀번호 | 내부 정책 값 |
 | `RUNPOD_CORE_BASE_URL` | vLLM/core AI 서버 주소 | `http://localhost:8504` |
 | `RUNPOD_STT_BASE_URL` | STT 서버 주소 | `http://localhost:8502` |
@@ -94,7 +96,7 @@ VITE_API_BASE_URL=http://localhost:8000/api
 
 ## .env 양식
 
-프로젝트 루트 `.env` 또는 `backend/hpm/.env` 예시입니다. 실제 secret 값은 팀 배포 환경에 맞게 채웁니다.
+`backend/hpm/.env.example`을 `backend/hpm/.env`로 복사해서 채우면 됩니다(전체 항목과 설명 포함). 아래는 주요 항목 예시이며, 실제 secret 값은 팀 배포 환경에 맞게 채웁니다.
 
 ```dotenv
 # Django
@@ -102,12 +104,13 @@ SECRET_KEY=change-me
 CSRF_TRUSTED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 DEFAULT_USER_PASSWORD=change-me
 
-# MySQL
-DB_NAME=hpm_db
-DB_USER=root
+# PostgreSQL (Supabase 대시보드 > Connect > Session pooler 값)
+DB_NAME=postgres
+DB_USER=postgres.<project-ref>
 DB_PASSWORD=change-me
-DB_HOST=localhost
-DB_PORT=3306
+DB_HOST=aws-0-ap-northeast-2.pooler.supabase.com
+DB_PORT=5432
+DB_SSLMODE=require
 
 # AI / RunPod services
 RUNPOD_CORE_BASE_URL=http://localhost:8504

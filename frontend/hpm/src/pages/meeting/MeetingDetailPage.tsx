@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useRecording } from "../../context/RecordingContext";
 import { useAuth } from "../../context/AuthContext";
@@ -13,7 +13,6 @@ import {
   pauseMeeting,
   resumeMeeting,
   endMeeting,
-  completeMeetingRawTranscriptOnly,
   sendChatMessage,
   saveAgendaList,
   getPrepMaterial,
@@ -22,6 +21,7 @@ import {
   type MeetingPreparation,
 } from "../../services/meeting";
 import * as DESIGN from "../../constants/design";
+import { dedupePreparationSources } from "../../utils/dedupeSources";
 
 type ChatMsg = { role: "user" | "bot"; content: string; source?: string };
 const MISSING_AUDIO_MESSAGE = "녹음 파일이 없습니다. 마이크 권한을 허용한 뒤 다시 녹음해주세요.";
@@ -54,7 +54,6 @@ export default function MeetingDetailPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [endLoading, setEndLoading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [showShortRecordingModal, setShowShortRecordingModal] = useState(false);
   const [showTenMinWarningModal, setShowTenMinWarningModal] = useState(false);
   const [showMaxTimeModal, setShowMaxTimeModal] = useState(false);
   const [agendaOpen, setAgendaOpen] = useState(true);
@@ -65,6 +64,10 @@ export default function MeetingDetailPage() {
   const [editedAgendas, setEditedAgendas] = useState<string[]>([]);
 
   const [prepMaterial, setPrepMaterial] = useState<MeetingPreparation | null>(null);
+  const uniquePrepSources = useMemo(
+    () => dedupePreparationSources(prepMaterial?.sources),
+    [prepMaterial?.sources],
+  );
   const [isEditingPrep, setIsEditingPrep] = useState(false);
   const [editedPrep, setEditedPrep] = useState({
     purpose: "",
@@ -368,25 +371,7 @@ export default function MeetingDetailPage() {
     }
   };
 
-  const finishWithoutMinutes = async () => {
-    setEndLoading(true);
-    try {
-      clearLocalRecordingState();
-      await completeMeetingRawTranscriptOnly(meetingId);
-      navigate(`/meetings/${meetingId}/archive`, { replace: true });
-    } catch (error) {
-      console.error("회의 원문 저장 종료 실패:", error);
-      alert("회의 종료 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setEndLoading(false);
-    }
-  };
-
   const handleEnd = async () => {
-    if (elapsed < 300) {
-      setShowShortRecordingModal(true);
-      return;
-    }
     await doEndMeeting();
   };
 
@@ -501,33 +486,6 @@ export default function MeetingDetailPage() {
 
   return (
     <>
-      {/* 5분 미만 종료 확인 모달 */}
-      {showShortRecordingModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white rounded-2xl w-80 overflow-hidden shadow-xl">
-            <div className="px-8 py-10 text-center">
-              <p className="text-[#6A1FEB] text-[14px] leading-relaxed whitespace-pre-line">
-                {"5분 미만의 녹음은 회의록이\n생성되지 않습니다. 종료하시겠습니까?"}
-              </p>
-            </div>
-            <div className="border-t border-gray-200 flex">
-              <button
-                onClick={() => setShowShortRecordingModal(false)}
-                className="flex-1 py-4 text-sm text-gray-700 hover:bg-gray-50 transition border-r border-gray-200"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => { setShowShortRecordingModal(false); finishWithoutMinutes(); }}
-                className="flex-1 py-4 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                확인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 10분 후 종료 예정 경고 모달 */}
       {showTenMinWarningModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
@@ -811,8 +769,8 @@ export default function MeetingDetailPage() {
                         <div>
                           <p className="font-medium text-sm text-[#141414] mb-2">출처</p>
                           <div className="bg-gray-50 rounded-xl p-4 border border-[#E6E1E6] space-y-2">
-                            {prepMaterial && prepMaterial.sources && prepMaterial.sources.length > 0 ? (
-                              prepMaterial.sources.map((src, i) => (
+                            {uniquePrepSources.length > 0 ? (
+                              uniquePrepSources.map((src, i) => (
                                 <div key={i} className="flex items-center gap-2 text-[13px]">
                                   <span className="text-[#767676]">- {src.title}</span>
                                   {src.file_url ? (
@@ -888,8 +846,8 @@ export default function MeetingDetailPage() {
                             <div>
                               <p className="font-medium text-sm text-[#141414] mb-2">출처</p>
                               <div className="bg-white rounded-xl p-4 border border-[#E6E1E6] space-y-2">
-                                {prepMaterial.sources && prepMaterial.sources.length > 0 ? (
-                                  prepMaterial.sources.map((src, i) => (
+                                {uniquePrepSources.length > 0 ? (
+                                  uniquePrepSources.map((src, i) => (
                                     <div key={i} className="flex items-center gap-2 text-[13px]">
                                       <span className="text-[#141414]">- {src.title}</span>
                                       {src.file_url ? (

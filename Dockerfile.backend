@@ -12,13 +12,8 @@ FROM python:3.11-slim
 
 
 # ── 2. 시스템 패키지 설치 ────────────────────────────────────
-# mysqlclient(Python ↔ MySQL 연결 도구)를 설치하려면
-# 아래 시스템 도구들이 먼저 필요함
-RUN apt-get update && apt-get install -y \
-    gcc \
-    pkg-config \
-    default-libmysqlclient-dev \
-    && rm -rf /var/lib/apt/lists/*
+# DB는 Supabase(PostgreSQL)를 사용하고, psycopg[binary]가
+# libpq를 포함하고 있어 별도 시스템 패키지가 필요 없음
 
 
 # ── 3. 작업 폴더 지정 ────────────────────────────────────────

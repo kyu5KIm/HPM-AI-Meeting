@@ -1,14 +1,8 @@
--- HPM 초기 데이터 설정
--- 실행 전: CREATE DATABASE hpm_db; + python manage.py migrate 완료 후 실행
+-- HPM 초기 데이터 설정 (PostgreSQL / Supabase)
+-- 실행 전: python manage.py migrate 완료 후 실행
 
-USE hpm_db;
-
--- 기존 데이터 초기화 (FK 체크 잠시 해제)
-SET FOREIGN_KEY_CHECKS = 0;
-TRUNCATE TABLE users;
-TRUNCATE TABLE `rank`;
-TRUNCATE TABLE dept;
-SET FOREIGN_KEY_CHECKS = 1;
+-- 기존 데이터 초기화 (users를 참조하는 데이터도 함께 삭제됨)
+TRUNCATE TABLE users, "rank", dept RESTART IDENTITY CASCADE;
 
 -- ─────────────────────────────────────────────
 -- 1. 부서 (dept)
@@ -23,7 +17,7 @@ INSERT INTO dept (dept_id, dept_name) VALUES
 -- ─────────────────────────────────────────────
 -- 2. 직급 (rank)
 -- ─────────────────────────────────────────────
-INSERT INTO `rank` (rank_id, rank_name) VALUES
+INSERT INTO "rank" (rank_id, rank_name) VALUES
 (1, '대표이사'),
 (2, '이사'),
 (3, '부장'),
@@ -79,3 +73,7 @@ INSERT INTO users (dept_id, rank_id, emp_no, email, name, work, password, accoun
 (5, 5, 'EMP042', 'ryu.sec@hpm.com',  '류지우', '보안 취약점 분석',  'abc123', 0, 0, 'USER', NOW(), NOW()),
 (5, 6, 'EMP043', 'moon.sec@hpm.com', '문하늘', '침해사고 대응',     'abc123', 0, 0, 'USER', NOW(), NOW()),
 (5, 7, 'EMP044', 'yoo.sec@hpm.com',  '유승호', '코드 보안 검토',    'abc123', 0, 0, 'USER', NOW(), NOW());
+
+-- 고정 ID로 넣은 테이블의 시퀀스를 현재 최대값으로 맞춤
+SELECT setval(pg_get_serial_sequence('dept', 'dept_id'), (SELECT MAX(dept_id) FROM dept));
+SELECT setval(pg_get_serial_sequence('"rank"', 'rank_id'), (SELECT MAX(rank_id) FROM "rank"));
