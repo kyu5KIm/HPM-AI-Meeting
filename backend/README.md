@@ -96,7 +96,7 @@ VITE_API_BASE_URL=http://localhost:8000/api
 
 ## .env 양식
 
-프로젝트 루트 `.env` 또는 `backend/hpm/.env` 예시입니다. 실제 secret 값은 팀 배포 환경에 맞게 채웁니다.
+`backend/hpm/.env.example`을 `backend/hpm/.env`로 복사해서 채우면 됩니다(전체 항목과 설명 포함). 아래는 주요 항목 예시이며, 실제 secret 값은 팀 배포 환경에 맞게 채웁니다.
 
 ```dotenv
 # Django
