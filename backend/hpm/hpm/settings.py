@@ -1,9 +1,15 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 import boto3
 
+# 한국어 Windows는 출력이 파이프로 연결되면 cp949를 쓴다. 이모지가 든 print()가
+# UnicodeEncodeError를 내며 요청까지 실패시키지 않도록 UTF-8로 고정한다.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="backslashreplace")
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent

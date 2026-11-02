@@ -41,6 +41,29 @@ def _content_type_for_file(path):
     return guessed or "application/octet-stream"
 
 
+def _remove_unreadable_documents(project_id, project_user, job_payload):
+    """파일 자체를 읽지 못한 적재 작업의 문서를 목록에서 지운다. 서버 장애면 재시도할 수 있게 남긴다.
+
+    작업의 metadata에 든 문서 ID로만 지우므로 상태를 다시 조회해도 안전하다."""
+    if job_payload.get("error_type") != "invalid_document":
+        return []
+    try:
+        document_ids = json.loads(job_payload.get("metadata") or "{}").get("document_ids") or []
+    except (TypeError, ValueError):
+        return []
+
+    removed = []
+    for doc in Document.objects.filter(project_id=project_id, uploader=project_user, document_id__in=document_ids):
+        try:
+            if default_storage.exists(doc.path):
+                default_storage.delete(doc.path)
+        except Exception:
+            pass
+        removed.append(doc.title)
+        doc.delete()
+    return removed
+
+
 def _parsed_metadata(project_id, documents):
     document_entries = [
         {
@@ -346,11 +369,17 @@ def document_ingest_status(request, project_id):
         )
 
     if job_status in {"failed", "error", "cancelled"}:
+        removed = _remove_unreadable_documents(project_id, project_user, payload)
         return Response(
             {
                 "status": "failed",
                 "job_id": job_id,
-                "error": payload.get("error") or f"Parsed ingest job failed: {job_status}",
+                "error": (
+                    f"읽을 수 없는 문서라 등록하지 않았습니다: {', '.join(removed)}"
+                    if removed
+                    else payload.get("error") or f"Parsed ingest job failed: {job_status}"
+                ),
+                "error_type": payload.get("error_type"),
                 "raw_status": payload.get("status"),
                 "step": payload.get("step"),
                 "result": payload.get("result"),
