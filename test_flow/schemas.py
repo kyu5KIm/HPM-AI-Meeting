@@ -15,6 +15,18 @@ class MinutesRequest(BaseModel):
     project_context: str = ""
 
 
+class MeetingIngestRequest(BaseModel):
+    """이미 만들어진 회의록을 Qdrant에 다시 적재할 때 쓴다(재적재·컬렉션 교체용)."""
+
+    meeting_id: str
+    project_id: str = ""
+    title: str = ""
+    meeting_datetime: str = ""
+    content: str = Field("", description="회의록 본문")
+    summary: str = ""
+    todo_list: list[dict[str, Any]] = Field(default_factory=list)
+
+
 class AgendaRequest(BaseModel):
     title: str
     previous_summary: str = ""

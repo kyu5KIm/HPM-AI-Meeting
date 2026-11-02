@@ -9,7 +9,7 @@ from qdrant_client import QdrantClient
 from qdrant_client import models
 
 
-DEFAULT_QDRANT_COLLECTION = "hpm_openai_chunks"
+DEFAULT_QDRANT_COLLECTION = "hpm_kure_chunks"
 
 
 @dataclass
@@ -65,9 +65,11 @@ def ensure_collection(client: QdrantClient, collection: str, vector_size: int, r
     if collection_exists(client, collection):
         return
 
+    # test_flow/qdrant_schema.py와 같은 구조: 기본 dense 벡터 + 나중에 채울 sparse 벡터 자리
     client.create_collection(
         collection_name=collection,
         vectors_config=models.VectorParams(size=vector_size, distance=models.Distance.COSINE),
+        sparse_vectors_config={os.getenv("QDRANT_SPARSE_VECTOR_NAME", "kure_sparse"): models.SparseVectorParams()},
     )
     print(f"[INFO] Created Qdrant collection: {collection} (size={vector_size}, distance=cosine)")
 

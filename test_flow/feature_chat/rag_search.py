@@ -126,6 +126,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--openai-api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--hf-token-env", default="HF_TOKEN")
     parser.add_argument("--cohere-model", default=os.getenv("COHERE_RERANK_MODEL", "rerank-v3.5"))
+    parser.add_argument("--rerank-provider", default=os.getenv("RERANK_PROVIDER", "kure"), choices=["kure", "cohere"])
+    parser.add_argument("--rerank-model", default=os.getenv("RERANK_MODEL") or None)
     parser.add_argument("--query", required=True)
     parser.add_argument("--top-k", type=int, default=3)
     parser.add_argument("--dense-k", type=int, default=20)
@@ -338,10 +340,16 @@ def make_answer_client(args: argparse.Namespace) -> Any:
 def run_answer_client(client: Any, model: str, system_prompt: str, user_prompt: str, temperature: float) -> str:
     if hasattr(client, "generate"):
         return client.generate(system_prompt, user_prompt, temperature)
+    kwargs: dict[str, Any] = {"temperature": temperature}
+    if model.lower().split("/")[-1].startswith(("gpt-5", "gpt-6", "o1", "o3", "o4")):
+        # GPT-5 계열 추론 모델은 reasoning_effort=none일 때만 temperature를 적용한다.
+        kwargs["reasoning_effort"] = os.getenv("RAG_ANSWER_REASONING_EFFORT", "none")
+        if kwargs["reasoning_effort"] != "none":
+            kwargs.pop("temperature")
     response = client.chat.completions.create(
         model=model,
-        temperature=temperature,
         messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+        **kwargs,
     )
     return response.choices[0].message.content or ""
 
@@ -702,7 +710,7 @@ def cohere_rerank(co_client: Any, query: str, candidates: list[SearchHit], args:
     results = getattr(response, "results", None)
     if results is None and isinstance(response, dict):
         results = response.get("results", [])
-    reranked: list[SearchHit] = []
+    ranked: list[tuple[int, float]] = []
     for item in results or []:
         idx = getattr(item, "index", None)
         score = getattr(item, "relevance_score", None)
@@ -711,7 +719,14 @@ def cohere_rerank(co_client: Any, query: str, candidates: list[SearchHit], args:
             score = item.get("relevance_score")
         if idx is None:
             continue
-        base = candidates[int(idx)]
+        ranked.append((int(idx), float(score or 0.0)))
+    return reranked_hits(candidates, ranked)
+
+
+def reranked_hits(candidates: list[SearchHit], ranked: list[tuple[int, float]]) -> list[SearchHit]:
+    reranked: list[SearchHit] = []
+    for idx, score in ranked:
+        base = candidates[idx]
         rank = len(reranked) + 1
         reranked.append(
             SearchHit(
@@ -720,18 +735,49 @@ def cohere_rerank(co_client: Any, query: str, candidates: list[SearchHit], args:
                 document=base.document,
                 metadata=base.metadata,
                 source="rerank",
-                score=float(score or 0.0),
+                score=score,
                 dense_rank=base.dense_rank,
                 dense_score=base.dense_score,
                 bm25_rank=base.bm25_rank,
                 bm25_score=base.bm25_score,
                 rrf_rank=base.rrf_rank,
                 rrf_score=base.rrf_score,
-                rerank_score=float(score or 0.0),
+                rerank_score=score,
                 distance=base.distance,
             )
         )
     return reranked
+
+
+_kure_client: Any = None
+
+
+def kure_rerank(query: str, candidates: list[SearchHit], args: argparse.Namespace) -> list[SearchHit]:
+    global _kure_client
+    if not candidates:
+        return []
+    if _kure_client is None:
+        root = str(Path(__file__).resolve().parents[1])
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        from kure_api import KureClient
+
+        _kure_client = KureClient()
+    model = getattr(args, "rerank_model", None) or "kure-reranker-nano"
+    max_chars = int(os.getenv("RAG_RERANK_MAX_CHARS", "4000"))
+    docs = [format_for_cohere(hit, max_chars=max_chars) for hit in candidates]
+    ranked = _kure_client.rerank(query, docs, model=model)
+    top_n = min(args.rerank_top_n, len(ranked))
+    return reranked_hits(candidates, ranked[:top_n])
+
+
+def rerank_hits(query: str, candidates: list[SearchHit], args: argparse.Namespace) -> list[SearchHit]:
+    provider = str(getattr(args, "rerank_provider", None) or os.getenv("RERANK_PROVIDER", "kure")).lower()
+    if provider == "cohere":
+        return cohere_rerank(get_cohere_client(), query, candidates, args)
+    if provider == "kure":
+        return kure_rerank(query, candidates, args)
+    raise ValueError(f"Unsupported rerank provider: {provider}")
 
 
 def fmt_score(value: float | None) -> str:
@@ -963,8 +1009,7 @@ def retrieve(args: argparse.Namespace, embedder: Any, client: Any, collection: s
     rrf_sec = time.perf_counter() - started
     if not args.skip_rerank:
         started = time.perf_counter()
-        co_client = get_cohere_client()
-        final_candidates = cohere_rerank(co_client, args.query, rrf_hits, args)
+        final_candidates = rerank_hits(args.query, rrf_hits, args)
         rerank_sec = time.perf_counter() - started
     else:
         final_candidates = rrf_hits

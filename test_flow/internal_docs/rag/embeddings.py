@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 
 DEFAULT_HF_EMBEDDING_MODEL = "jhgan/ko-sroberta-multitask"
 DEFAULT_OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+DEFAULT_KURE_EMBEDDING_MODEL = "kure-v3"
+DEFAULT_KURE_EMBEDDING_DIMENSIONS = 1024
 
 
 @dataclass
@@ -17,10 +21,14 @@ class Embedder:
     device: str | None = None
     _client: Any = None
 
-    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+    def embed_texts(self, texts: list[str], input_type: str = "document") -> list[list[float]]:
         texts = [str(text or "") for text in texts]
+        if self.provider == "kure":
+            return self._client.embed(texts, model=self.model, input_type=input_type, dimensions=self.dimensions)
         if self.provider == "huggingface":
-            vectors = self._client.encode(
+            # KURE-v3처럼 질문/문서 프롬프트가 다른 모델은 encode_query/encode_document를 쓴다.
+            encode = getattr(self._client, "encode_query" if input_type == "query" else "encode_document", None)
+            vectors = (encode or self._client.encode)(
                 texts,
                 batch_size=min(64, max(1, len(texts))),
                 show_progress_bar=False,
@@ -35,7 +43,7 @@ class Embedder:
         return [item.embedding for item in response.data]
 
     def embed_query(self, query: str) -> list[float]:
-        return self.embed_texts([query])[0]
+        return self.embed_texts([query], input_type="query")[0]
 
 
 class TransformersEmbeddingClient:
@@ -127,9 +135,20 @@ def make_embedder(
             kwargs["device"] = resolved_device
         if token:
             kwargs["token"] = token
+        if dimensions:
+            kwargs["truncate_dim"] = dimensions
         client = SentenceTransformer(model, **kwargs)
         dims = int(client.get_sentence_embedding_dimension() or 0) or None
         return Embedder(provider=provider, model=model, dimensions=dims, device=resolved_device, _client=client)
+
+    if provider == "kure":
+        root = str(Path(__file__).resolve().parents[2])
+        if root not in sys.path:
+            sys.path.insert(0, root)
+        from kure_api import KureClient
+
+        dims = dimensions or DEFAULT_KURE_EMBEDDING_DIMENSIONS
+        return Embedder(provider=provider, model=model or DEFAULT_KURE_EMBEDDING_MODEL, dimensions=dims, device=None, _client=KureClient())
 
     if provider == "openai":
         try:
