@@ -121,6 +121,8 @@ export default function KanbanBoardPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [draggingTask, setDraggingTask] = useState<KanbanTask | null>(null);
+  // 드래그 중 마우스가 올라가 있는 컬럼. 이 컬럼에만 삽입 위치 표시선을 그린다.
+  const [dragOverColumnId, setDragOverColumnId] = useState<KanbanColumnId | null>(null);
   const [canManageJira, setCanManageJira] = useState(false);
   const [jiraParentOptions, setJiraParentOptions] = useState<JiraParentOption[]>([]);
 
@@ -338,18 +340,13 @@ export default function KanbanBoardPage() {
     }
   };
 
-  const handleDropOnCard = (targetTask: KanbanTask) => {
+  // KanbanColumn이 표시선 위치로 계산한 자리: beforeTask 앞(null이면 컬럼 맨 끝)
+  const handleDropAt = (columnId: KanbanColumnId, beforeTask: KanbanTask | null) => {
     const task = draggingTask;
     setDraggingTask(null);
-    if (!task || task.id === targetTask.id) return;
-    reorderAndPersist(task, targetTask.columnId, targetTask);
-  };
-
-  const handleDropOnColumn = (columnId: KanbanColumnId) => {
-    const task = draggingTask;
-    setDraggingTask(null);
-    if (!task) return;
-    reorderAndPersist(task, columnId, null);
+    setDragOverColumnId(null);
+    if (!task || task.id === beforeTask?.id) return;
+    reorderAndPersist(task, columnId, beforeTask);
   };
 
   // ─── [BUG FIX] handleCardDragStart / handleCardDragEnd 선언 추가 ─────────
@@ -359,10 +356,12 @@ export default function KanbanBoardPage() {
   // ─────────────────────────────────────────────────────────────────────────
   const handleCardDragStart = (task: KanbanTask) => {
     setDraggingTask(task);
+    setDragOverColumnId(null);
   };
 
   const handleCardDragEnd = () => {
     setDraggingTask(null);
+    setDragOverColumnId(null);
   };
 
   const submitTask = async () => {
@@ -508,8 +507,9 @@ export default function KanbanBoardPage() {
             onEditTask={openEditModal}
             onCardDragStart={handleCardDragStart}
             onCardDragEnd={handleCardDragEnd}
-            onDropOnColumn={handleDropOnColumn}
-            onDropOnCard={handleDropOnCard}
+            onDropAt={handleDropAt}
+            isDropTarget={dragOverColumnId === column.id}
+            onColumnDragOver={setDragOverColumnId}
             draggingTaskId={draggingTask?.id ?? null}
             canManage={canManageJira}
           />
