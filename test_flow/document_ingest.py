@@ -268,6 +268,10 @@ def run_local_pdf_parser(input_dir: Path, output_dir: Path) -> dict[str, Any]:
     }
 
 
+class InvalidDocumentError(ValueError):
+    """업로드 파일 자체를 읽을 수 없는 경우(손상, 내용 없음). 서버 장애와 구분한다."""
+
+
 def run_kordoc_parser(input_dir: Path, output_dir: Path) -> dict[str, Any]:
     """kordoc으로 PDF·HWP·HWPX·DOCX·이미지·TXT를 블록으로 바꿔 all_blocks.jsonl을 만든다."""
     from kordoc_parser import KORDOC_VERSION, SUPPORTED_EXTENSIONS, parse_file
@@ -302,7 +306,14 @@ def run_kordoc_parser(input_dir: Path, output_dir: Path) -> dict[str, Any]:
     failed = [record for record in records if record.get("status") != "success"]
     if files and len(failed) == len(files):
         reasons = "; ".join(f"{r['source_filename']}: {r.get('reason')}" for r in failed)
-        raise RuntimeError(f"Document parsing failed for every file: {reasons}")
+        # 파일 자체 문제면 ValueError(라우트에서 400), kordoc 미설치·API 장애 같은 서버 문제면 RuntimeError(500)
+        file_problem = all(
+            str(r.get("reason")).startswith(("no_extractable_text", "KordocError"))
+            and "timed out" not in str(r.get("reason"))
+            for r in failed
+        )
+        error_type = InvalidDocumentError if file_problem else RuntimeError
+        raise error_type(f"Document parsing failed for every file: {reasons}")
     return {
         "mode": "kordoc",
         "backend": f"kordoc {KORDOC_VERSION} + luna_ocr_fallback",

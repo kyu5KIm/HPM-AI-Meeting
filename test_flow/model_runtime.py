@@ -455,7 +455,10 @@ def _openai_ocr_file_bytes(file_bytes: bytes, filename: str, content_type: str =
     if ext == ".txt" or mime.startswith("text/"):
         return _decode_text(file_bytes)[0].strip()
     if ext == ".docx":
-        return _extract_docx_text(file_bytes)
+        try:
+            return _extract_docx_text(file_bytes)
+        except Exception as exc:
+            raise ValueError(f"Could not read DOCX file: {filename}") from exc
     if ext == ".pdf":
         direct_text = ""
         if OCR_PDF_TEXT_FIRST:
@@ -465,8 +468,12 @@ def _openai_ocr_file_bytes(file_bytes: bytes, filename: str, content_type: str =
                 direct_text = ""
         if len(direct_text.strip()) >= OCR_MIN_DIRECT_TEXT_CHARS:
             return direct_text.strip()
+        try:
+            pages = _render_pdf_pages(file_bytes)
+        except Exception as exc:
+            raise ValueError(f"Could not read PDF file: {filename}") from exc
         page_texts = []
-        for page_name, image_bytes in _render_pdf_pages(file_bytes):
+        for page_name, image_bytes in pages:
             text = _ocr_image_bytes(image_bytes, page_name, "image/png")
             if text:
                 page_texts.append(f"[{page_name}]\n{text}")

@@ -89,6 +89,10 @@ OCR_RENDER_SCALE = float(os.getenv("OCR_RENDER_SCALE", "2.0"))
 OCR_PDF_TEXT_FIRST = os.getenv("OCR_PDF_TEXT_FIRST", "true").lower() == "true"
 OCR_MIN_DIRECT_TEXT_CHARS = int(os.getenv("OCR_MIN_DIRECT_TEXT_CHARS", "80"))
 
+# 업로드 한도(파일 1개 기준). 녹음 한도는 nginx client_max_body_size(250M)에 맞춘다.
+MAX_DOCUMENT_UPLOAD_MB = int(os.getenv("MAX_DOCUMENT_UPLOAD_MB", "100"))
+MAX_AUDIO_UPLOAD_MB = int(os.getenv("MAX_AUDIO_UPLOAD_MB", "250"))
+
 STT_MODEL_ID = force_env(
     "STT_MODEL_ID",
     os.getenv("TEST_FLOW_STT_MODEL_ID") or os.getenv("OPENAI_STT_MODEL_ID") or "gpt-4o-transcribe-diarize",

@@ -10,7 +10,9 @@ import uuid
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from config import EMBEDDING_DEVICE, EMBEDDING_MODEL_ID, EMBEDDING_PROVIDER
+from config import EMBEDDING_DEVICE, EMBEDDING_MODEL_ID, EMBEDDING_PROVIDER, MAX_DOCUMENT_UPLOAD_MB
+from document_ingest import InvalidDocumentError
+from upload_limits import read_upload
 
 from .service import ALLOWED_EXTENSIONS, UploadedDocument, ingest_uploaded_documents
 
@@ -48,13 +50,19 @@ def _serialize_error(exc: Exception) -> str:
     return str(exc)
 
 
+def _reject_qdrant_override(qdrant_url: str | None, qdrant_api_key: str | None) -> None:
+    # 요청이 지정한 서버로 문서를 보내지 않도록, Qdrant 접속 정보는 서버 설정만 쓴다.
+    if qdrant_url or qdrant_api_key:
+        raise HTTPException(status_code=400, detail="qdrant_url and qdrant_api_key cannot be set by request.")
+
+
 async def _collect_uploads(files: list[UploadFile]) -> list[UploadedDocument]:
     uploads: list[UploadedDocument] = []
     for file in files:
         filename = file.filename or ""
         if not any(filename.lower().endswith(extension) for extension in ALLOWED_EXTENSIONS):
             raise HTTPException(status_code=400, detail=f"Only PDF, HWP, HWPX, DOCX, and TXT files are supported: {filename}")
-        content = await file.read()
+        content = await read_upload(file, MAX_DOCUMENT_UPLOAD_MB)
         if not content:
             raise HTTPException(status_code=400, detail=f"Uploaded file is empty: {filename}")
         uploads.append(UploadedDocument(filename=filename, content=content))
@@ -117,6 +125,8 @@ def _run_ingest_job(job_id: str, uploads: list[UploadedDocument], params: dict[s
             status="failed",
             step="failed",
             error=_serialize_error(exc),
+            # Django가 파일 문제와 서버 장애를 구분해 문서를 정리할 수 있게 알려준다.
+            error_type="invalid_document" if isinstance(exc, InvalidDocumentError) else "server_error",
             elapsed_sec=round(time.perf_counter() - started, 3),
             completed_at=_now_ts(),
         )
@@ -140,6 +150,7 @@ async def ingest_internal_documents(
     embed_batch_size: int = Form(16),
     upsert_batch_size: int = Form(128),
 ) -> dict[str, Any]:
+    _reject_qdrant_override(qdrant_url, qdrant_api_key)
     uploads = await _collect_uploads(files)
 
     try:
@@ -189,6 +200,7 @@ async def create_internal_documents_ingest_job(
     embed_batch_size: int = Form(16),
     upsert_batch_size: int = Form(128),
 ) -> dict[str, Any]:
+    _reject_qdrant_override(qdrant_url, qdrant_api_key)
     uploads = await _collect_uploads(files)
     job_id = uuid.uuid4().hex
     params = {
@@ -215,6 +227,8 @@ async def create_internal_documents_ingest_job(
         "result": None,
         "elapsed_sec": None,
         "error": None,
+        "error_type": None,
+        "metadata": metadata,
         "files": [upload.filename for upload in uploads],
         "created_at": _now_ts(),
         "updated_at": _now_ts(),

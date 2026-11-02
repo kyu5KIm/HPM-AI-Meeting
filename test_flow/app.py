@@ -869,8 +869,15 @@ def _run_minutes_job(job_id: str, req: MinutesRequest) -> None:
         )
 
 
+def _require_transcript(req: MinutesRequest) -> None:
+    # 빈 내용으로 회의록을 만들면 "transcript 없음" 문서가 Qdrant에 적재되어 검색을 오염시킨다.
+    if not req.text.strip():
+        raise HTTPException(status_code=400, detail="text is required.")
+
+
 @app.post("/generate-minutes/jobs", status_code=202)
 def create_generate_minutes_job(req: MinutesRequest) -> dict[str, Any]:
+    _require_transcript(req)
     job_id = uuid.uuid4().hex
     job = {
         "job_id": job_id,
@@ -899,6 +906,7 @@ def get_generate_minutes_job(job_id: str) -> dict[str, Any]:
 
 @app.post("/generate-minutes", response_model=TextResponse)
 def generate_minutes(req: MinutesRequest) -> TextResponse:
+    _require_transcript(req)
     return _generate_minutes_response(req)
 
 

@@ -79,7 +79,8 @@ def probe_duration(path: str | Path) -> float:
 def compress_audio(source: str | Path, target: Path, bitrate: str) -> Path:
     completed = _run(["ffmpeg", "-y", "-v", "error", "-i", str(source), "-vn", "-ac", "1", "-ar", "16000", "-b:a", bitrate, str(target)])
     if completed.returncode != 0 or not target.exists():
-        raise RuntimeError(f"ffmpeg could not convert audio: {completed.stderr.strip()[-300:]}")
+        # ffmpeg가 읽지 못하는 파일은 업로드 자체가 잘못된 경우다(라우트에서 400으로 응답).
+        raise ValueError(f"ffmpeg could not convert audio: {completed.stderr.strip()[-300:]}")
     return target
 
 
