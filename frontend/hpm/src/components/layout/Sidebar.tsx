@@ -31,26 +31,31 @@ export default function Sidebar({ isCollapsed, toggleCollapse }: SidebarProps) {
   } = useRecording();
   const isRecording = recMeetingId !== null && (startTime !== null || pausedElapsed !== null);
 
-  const [elapsed, setElapsed] = useState(() =>
+  const [tickElapsed, setTickElapsed] = useState(() =>
     startTime !== null ? Math.floor((Date.now() - startTime) / 1000) : 0
   );
 
+  // 녹음 중이 아니거나 일시정지 상태면 시간이 고정되므로 렌더 중에 바로 맞춘다.
+  const frozenElapsed = !isRecording
+    ? 0
+    : isPaused && pausedElapsed !== null
+      ? pausedElapsed
+      : null;
+  if (frozenElapsed !== null && tickElapsed !== frozenElapsed) {
+    setTickElapsed(frozenElapsed);
+  }
+  const elapsed = frozenElapsed ?? tickElapsed;
+
   useEffect(() => {
-    if (!isRecording) {
-      setElapsed(0);
-      return;
-    }
-    if (isPaused && pausedElapsed !== null) {
-      setElapsed(pausedElapsed);
-      return;
-    }
-    if (startTime === null) return;
-    setElapsed(Math.floor((Date.now() - startTime) / 1000));
-    const id = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTime) / 1000));
-    }, 1000);
-    return () => clearInterval(id);
-  }, [isRecording, startTime, isPaused, pausedElapsed]);
+    if (frozenElapsed !== null || startTime === null) return;
+    const update = () => setTickElapsed(Math.floor((Date.now() - startTime) / 1000));
+    const timeoutId = setTimeout(update, 0);
+    const intervalId = setInterval(update, 1000);
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
+    };
+  }, [frozenElapsed, startTime]);
 
   useEffect(() => {
     if (recMeetingId === null) return;
@@ -96,10 +101,13 @@ export default function Sidebar({ isCollapsed, toggleCollapse }: SidebarProps) {
   const isActive = (path: string) => location.pathname.startsWith(path);
   const isOnMeetingPage = recMeetingId !== null && location.pathname === `/meetings/${recMeetingId}`;
   const [timerHovered, setTimerHovered] = useState(false);
+  const [timerHoverPathname, setTimerHoverPathname] = useState(location.pathname);
 
-  useEffect(() => {
+  // 페이지를 옮기면 타이머 hover 상태를 해제한다.
+  if (timerHoverPathname !== location.pathname) {
+    setTimerHoverPathname(location.pathname);
     setTimerHovered(false);
-  }, [location.pathname]);
+  }
 
   return (
     <aside

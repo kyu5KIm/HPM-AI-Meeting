@@ -26,16 +26,20 @@ export default function MeetingDropdown({ isCollapsed, toggleCollapse }: Meeting
   const [meetingOpen, setMeetingOpen] = useState(true);
   const [recentMeetings, setRecentMeetings] = useState<RecentMeeting[]>([]);
   const [isHovered, setIsHovered] = useState(false);
+  const [recentMeetingsProjectId, setRecentMeetingsProjectId] = useState(projectId);
+
+  // 프로젝트 선택이 풀리면 렌더 중에 최근 회의 목록을 비운다.
+  if (recentMeetingsProjectId !== projectId) {
+    setRecentMeetingsProjectId(projectId);
+    if (!projectId) setRecentMeetings([]);
+  }
 
   useEffect(() => {
-    if (projectId) {
-      api.get(`/meetings/?project_id=${projectId}`).then(res => {
-        const data = Array.isArray(res.data) ? res.data : [];
-        setRecentMeetings(data.slice(0, 4));
-      }).catch(() => {});
-    } else {
-      setRecentMeetings([]);
-    }
+    if (!projectId) return;
+    api.get(`/meetings/?project_id=${projectId}`).then(res => {
+      const data = Array.isArray(res.data) ? res.data : [];
+      setRecentMeetings(data.slice(0, 4));
+    }).catch(() => {});
   }, [projectId]);
 
   const isActive = (path: string) => location.pathname.startsWith(path);

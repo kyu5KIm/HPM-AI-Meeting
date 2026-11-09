@@ -59,14 +59,33 @@ export default function Header() {
     }
   }, [isAdmin, user]);
 
-  useEffect(() => {
-    void loadNotifications();
-  }, [loadNotifications]);
+  // 사용자가 바뀌면 렌더 중에 알림 상태를 맞춰 두고, 실제 요청은 아래 effect에서 보낸다.
+  const [notificationsUser, setNotificationsUser] = useState<typeof user | undefined>(undefined);
+  if (notificationsUser !== user) {
+    setNotificationsUser(user);
+    if (!user || isAdmin) {
+      setNotifications([]);
+      setNotificationsLoading(false);
+    } else {
+      setNotificationsLoading(true);
+    }
+  }
 
   useEffect(() => {
+    if (!user || isAdmin) return;
+    getNotifications()
+      .then((data) => setNotifications(data))
+      .catch(() => setNotifications([]))
+      .finally(() => setNotificationsLoading(false));
+  }, [isAdmin, user]);
+
+  // 사용자 id가 바뀌면 Jira 연결 상태를 초기화한다.
+  const [jiraStatusUserId, setJiraStatusUserId] = useState(user?.users_id);
+  if (jiraStatusUserId !== user?.users_id) {
+    setJiraStatusUserId(user?.users_id);
     setJiraConnected(null);
     setJiraStatusLoading(false);
-  }, [user?.users_id]);
+  }
 
   useEffect(() => {
     if (!user || isAdmin) return;
