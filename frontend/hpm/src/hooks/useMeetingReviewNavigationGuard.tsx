@@ -1,4 +1,4 @@
-import { createElement, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useBlocker } from "react-router-dom";
 import ConfirmModal from "../components/ui/ConfirmModal";
 import { completeMeetingRawTranscriptOnly } from "../services/meeting";
@@ -79,14 +79,14 @@ export default function useMeetingReviewNavigationGuard({
     }
   }, [blocker, confirmingExit, meetingId, onConfirmExit]);
 
-  const reviewExitModal = showExitModal
-    ? createElement(ConfirmModal, {
-        message,
-        loading: confirmingExit,
-        onConfirm: handleConfirmExit,
-        onCancel: handleCancelExit,
-      })
-    : null;
+  const reviewExitModal = showExitModal ? (
+    <ConfirmModal
+      message={message}
+      loading={confirmingExit}
+      onConfirm={handleConfirmExit}
+      onCancel={handleCancelExit}
+    />
+  ) : null;
 
   return { allowReviewNavigation, reviewExitModal };
 }
