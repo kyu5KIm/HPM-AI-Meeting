@@ -115,3 +115,27 @@ def test_ingest_job_reports_invalid_document_type():
     assert job["status"] == "failed"
     assert job["error_type"] == "invalid_document"
     assert '"document_ids": [7]' in job["metadata"]
+
+
+@pytest.mark.parametrize(
+    "path,body",
+    [
+        ("/chat", {"question": ""}),
+        ("/chat", {"question": "   \n "}),
+        ("/chat", {"question": "예산은?", "max_previous_meetings": -1}),
+        ("/generate-agendas", {"title": ""}),
+        ("/generate-agendas", {"title": "  "}),
+        ("/generate-preparation", {"title": ""}),
+        ("/generate-preparation", {"title": "예산", "max_previous_meetings": -5}),
+    ],
+)
+def test_blank_text_and_negative_counts_are_422(path, body):
+    res = client.post(path, json=body)
+    assert res.status_code == 422
+
+
+def test_zero_previous_meetings_is_allowed():
+    from schemas import ChatRequest, PreparationRequest
+
+    assert ChatRequest(question="예산은?", max_previous_meetings=0).max_previous_meetings == 0
+    assert PreparationRequest(title="예산", max_previous_meetings=0).max_previous_meetings == 0
