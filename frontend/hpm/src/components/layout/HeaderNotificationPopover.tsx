@@ -129,7 +129,7 @@ export default function HeaderNotificationPopover({
           ),
         );
       } catch {
-
+        // 읽음 처리에 실패해도 알림 이동은 계속 진행한다.
       }
     }
 

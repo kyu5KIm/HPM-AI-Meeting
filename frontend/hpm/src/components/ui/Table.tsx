@@ -113,7 +113,7 @@ export default function Table<T>({
                     style={{ textAlign: col.align }}
                     className={`py-4 px-6 ${DESIGN.FONT_SIZES.md} ${DESIGN.COLORS.black} align-middle break-words`}
                   >
-                    {col.render ? col.render(row, rowIndex) : (row as any)[col.key]}
+                    {col.render ? col.render(row, rowIndex) : (row as Record<string, React.ReactNode>)[col.key]}
                   </td>
                 ))}
               </tr>
