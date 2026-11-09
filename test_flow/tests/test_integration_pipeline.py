@@ -152,7 +152,8 @@ def make_docs(directory):
         "const {markdownToHwpx}=require('kordoc');const fs=require('fs');"
         "markdownToHwpx(fs.readFileSync(0,'utf8')).then(b=>fs.writeFileSync(process.argv[1],Buffer.from(b)));"
     )
-    subprocess.run(["node", "-e", script, str(directory / "사업계획.hwpx")], input=HWPX_MD, text=True, check=True, cwd=APP_DIR / "kordoc")
+    # node는 stdin을 UTF-8로 읽는다. Windows 기본 인코딩(cp949)으로 보내면 한글이 깨진다.
+    subprocess.run(["node", "-e", script, str(directory / "사업계획.hwpx")], input=HWPX_MD, text=True, encoding="utf-8", check=True, cwd=APP_DIR / "kordoc")
     import fitz
 
     doc = fitz.open()
