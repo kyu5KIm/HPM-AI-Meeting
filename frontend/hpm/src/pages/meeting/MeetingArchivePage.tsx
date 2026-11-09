@@ -88,7 +88,8 @@ export default function MeetingArchivePage() {
   const toggleExpand = (taskId: number) => {
     setExpandedIds(prev => {
       const next = new Set(prev);
-      next.has(taskId) ? next.delete(taskId) : next.add(taskId);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
       return next;
     });
   };

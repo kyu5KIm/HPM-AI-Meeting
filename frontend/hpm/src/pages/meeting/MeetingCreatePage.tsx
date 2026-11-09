@@ -30,12 +30,16 @@ export default function MeetingCreatePage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [showErrorModal, setShowErrorModal] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [usersProjectId, setUsersProjectId] = useState(projectId);
+
+  // 프로젝트 선택이 풀리면 렌더 중에 참여자 후보를 비운다.
+  if (usersProjectId !== projectId) {
+    setUsersProjectId(projectId);
+    if (!projectId) setUsers([]);
+  }
 
   useEffect(() => {
-    if (!projectId) {
-      setUsers([]);
-      return;
-    }
+    if (!projectId) return;
 
     getProjectDetail(projectId)
       .then(project => {

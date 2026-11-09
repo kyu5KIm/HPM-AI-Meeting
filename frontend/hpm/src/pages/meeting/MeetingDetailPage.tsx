@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useRecording } from "../../context/RecordingContext";
 import { useAuth } from "../../context/AuthContext";
@@ -81,15 +81,26 @@ export default function MeetingDetailPage() {
   const tenMinWarnedRef = useRef(false);
   const maxTimeTriggeredRef = useRef(false);
 
-  useEffect(() => {
+  // 첫 진입 때만 녹음 컨텍스트를 맞춘다. 이후 값 변화로는 다시 실행하지 않는다.
+  const syncRecordingOnMount = useEffectEvent(() => {
     if (initialStatus === "in_progress" && ctxMeetingId !== meetingId) {
       startRecording(meetingId);
     }
-  }, []);
+  });
 
   useEffect(() => {
-    setLoading(true);
+    syncRecordingOnMount();
+  }, []);
 
+  const [loadingMeetingId, setLoadingMeetingId] = useState(meetingId);
+
+  // 다른 회의로 이동하면 렌더 중에 로딩 상태를 다시 켠다.
+  if (!Object.is(loadingMeetingId, meetingId)) {
+    setLoadingMeetingId(meetingId);
+    setLoading(true);
+  }
+
+  useEffect(() => {
     getMeetingDetail(meetingId)
       .then((data) => {
         if (!data || !data.title) {
@@ -161,15 +172,19 @@ export default function MeetingDetailPage() {
     }
   }, [elapsed, meeting?.status, isPaused]);
 
+  const hasMeeting = meeting !== null;
+  const meetingStatus = meeting?.status;
+  const meetingIsPaused = meeting?.is_paused;
+
   useEffect(() => {
-    if (!meeting || meeting.status === "finished") return;
+    if (!hasMeeting || meetingStatus === "finished") return;
 
     const interval = setInterval(async () => {
       try {
         const data = await getMeetingDetail(meetingId);
         if (data) {
-          const statusChanged = data.status !== meeting.status;
-          const pauseChanged = data.is_paused !== meeting.is_paused;
+          const statusChanged = data.status !== meetingStatus;
+          const pauseChanged = data.is_paused !== meetingIsPaused;
 
           if (statusChanged || pauseChanged) {
             setMeeting(data);
@@ -212,13 +227,14 @@ export default function MeetingDetailPage() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [meeting?.status, meeting?.is_paused, meetingId, ctxMeetingId, ctxIsPaused, startRecording, stopRecording, pauseRecording, resumeRecording, navigate, currentUserId]);
+  }, [hasMeeting, meetingStatus, meetingIsPaused, meetingId, ctxMeetingId, ctxIsPaused, startRecording, stopRecording, pauseRecording, resumeRecording, navigate, currentUserId]);
 
-  useEffect(() => {
-    if (meeting) {
-      setIsPaused(meeting.is_paused || false);
-    }
-  }, [meeting?.is_paused]);
+  // 서버의 일시정지 상태가 바뀌면 렌더 중에 화면의 일시정지 상태를 맞춘다.
+  const [syncedMeetingIsPaused, setSyncedMeetingIsPaused] = useState(meetingIsPaused);
+  if (syncedMeetingIsPaused !== meetingIsPaused) {
+    setSyncedMeetingIsPaused(meetingIsPaused);
+    if (meeting) setIsPaused(meetingIsPaused || false);
+  }
 
   useEffect(() => {
     const refetch = async () => {
@@ -438,7 +454,7 @@ export default function MeetingDetailPage() {
         };
       });
       setIsEditingAgenda(false);
-    } catch (e) {
+    } catch {
       alert("안건 수정 저장에 실패했습니다.");
     }
   };
@@ -473,7 +489,7 @@ export default function MeetingDetailPage() {
           meeting_document: "compiled"
         };
       });
-    } catch (e) {
+    } catch {
       alert("준비자료 수정 저장에 실패했습니다.");
     }
   };

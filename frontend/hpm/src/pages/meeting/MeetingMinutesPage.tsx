@@ -62,13 +62,21 @@ export default function MeetingMinutesPage() {
   const toggleCollapse = (taskId: number) => {
     setCollapsedTasks(prev => {
       const next = new Set(prev);
-      next.has(taskId) ? next.delete(taskId) : next.add(taskId);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
       return next;
     });
   };
 
-  useEffect(() => {
+  const [loadingMeetingId, setLoadingMeetingId] = useState(meetingId);
+
+  // 다른 회의로 이동하면 렌더 중에 로딩 상태를 다시 켠다.
+  if (!Object.is(loadingMeetingId, meetingId)) {
+    setLoadingMeetingId(meetingId);
     setLoading(true);
+  }
+
+  useEffect(() => {
     Promise.all([getMeetingDetail(meetingId), getTaskList(meetingId)])
       .then(([m, t]) => {
         if (m) setMeeting(m);

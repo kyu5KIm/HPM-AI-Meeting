@@ -50,9 +50,15 @@ export default function MeetingListPage() {
   // 페이지네이션 상태
   const [page, setPage] = useState(1);
   const PER_PAGE = 10;
+  const [loadingProjectId, setLoadingProjectId] = useState(projectId);
+
+  // 프로젝트가 바뀌면 렌더 중에 로딩 상태를 다시 켠다.
+  if (loadingProjectId !== projectId) {
+    setLoadingProjectId(projectId);
+    setLoading(true);
+  }
 
   useEffect(() => {
-    setLoading(true);
     getMeetingList(projectId ?? undefined)
       .then((data) => {
         setMeetings(data ?? []);

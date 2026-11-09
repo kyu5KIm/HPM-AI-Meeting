@@ -30,9 +30,15 @@ export default function JiraTaskPage() {
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [showRetryModal, setShowRetryModal] = useState(false);
+  const [loadingMeetingId, setLoadingMeetingId] = useState(meetingId);
+
+  // 다른 회의로 이동하면 렌더 중에 로딩 상태를 다시 켠다.
+  if (!Object.is(loadingMeetingId, meetingId)) {
+    setLoadingMeetingId(meetingId);
+    setLoading(true);
+  }
 
   useEffect(() => {
-    setLoading(true);
     getTaskList(meetingId)
       .then(list => {
         const nextTasks = list || [];
@@ -47,7 +53,8 @@ export default function JiraTaskPage() {
   const toggle = (taskId: number) => {
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(taskId) ? next.delete(taskId) : next.add(taskId);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
       return next;
     });
   };
