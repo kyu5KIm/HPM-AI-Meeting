@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/meeting";
@@ -34,15 +34,27 @@ export default function ProjectCreatePage() {
   const navigate = useNavigate();
   const { user, selectProject } = useAuth();
   const currentUserId = user?.users_id ?? user?.user_id;
-  const [step, setStep] = useState(0);
+  // Jira OAuth에서 돌아온 경우(?jira=success|error) 첫 렌더 상태를 URL에서 바로 정한다.
+  const [jiraRedirectResult] = useState(() => new URLSearchParams(window.location.search).get("jira"));
+  const handledJiraRedirect = jiraRedirectResult === "success" || jiraRedirectResult === "error";
+  const [step, setStep] = useState(jiraRedirectResult === "success" ? 1 : 0);
 
-  const [jiraConnected, setJiraConnected] = useState(false);
+  const [jiraConnected, setJiraConnected] = useState(jiraRedirectResult === "success");
   const [errorMessage, setErrorMessage] = useState("");
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [jiraProjects, setJiraProjects] = useState<JiraProject[]>([]);
   const [jiraLoading, setJiraLoading] = useState(false);
-  const [checkingJiraStatus, setCheckingJiraStatus] = useState(true);
+  const [checkingJiraStatus, setCheckingJiraStatus] = useState(!handledJiraRedirect);
   const [selectedJiraProject, setSelectedJiraProject] = useState<string | null>(null);
+  const skipJiraStatusCheckRef = useRef(handledJiraRedirect);
+
+  // 사용자가 바뀌면 Jira 연결 상태를 다시 확인한다. 사용자가 없으면 확인 중으로 보지 않는다.
+  const [jiraStatusUserId, setJiraStatusUserId] = useState(currentUserId);
+  if (jiraStatusUserId !== currentUserId) {
+    setJiraStatusUserId(currentUserId);
+    setCheckingJiraStatus(true);
+  }
+  const isCheckingJiraStatus = Boolean(currentUserId) && checkingJiraStatus;
 
   const [allUsers, setAllUsers] = useState<UserOption[]>([]);
   const [members, setMembers] = useState<(UserOption & { isJira: boolean })[]>([]);
@@ -51,30 +63,19 @@ export default function ProjectCreatePage() {
 
   const [createdProjectId, setCreatedProjectId] = useState<number | null>(null);
   const [createdProjectName, setCreatedProjectName] = useState("");
-  const [jiraErrorModal, setJiraErrorModal] = useState(false);
+  const [jiraErrorModal, setJiraErrorModal] = useState(jiraRedirectResult === "error");
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("jira") === "success") {
-      setJiraConnected(true);
-      setStep(1);
-      setCheckingJiraStatus(false);
-      window.history.replaceState({}, "", window.location.pathname);
-      return;
-    } else if (params.get("jira") === "error") {
-      setJiraErrorModal(true);
-      setCheckingJiraStatus(false);
+    if (skipJiraStatusCheckRef.current) {
+      // OAuth 결과는 첫 렌더에 반영했으니 URL만 정리하고 상태 확인은 건너뛴다.
+      skipJiraStatusCheckRef.current = false;
       window.history.replaceState({}, "", window.location.pathname);
       return;
     }
 
-    if (!currentUserId) {
-      setCheckingJiraStatus(false);
-      return;
-    }
+    if (!currentUserId) return;
 
     let active = true;
-    setCheckingJiraStatus(true);
     api.get("/jira/status/")
       .then((res) => {
         if (!active) return;
@@ -120,11 +121,20 @@ export default function ProjectCreatePage() {
     }).catch((e) => console.error("/api/users/ 실패:", e));
   }, [currentUserId, user]);
 
+  // Jira가 연결된 사용자가 정해지면 렌더 중에 프로젝트 목록을 비우고 로딩을 켠다.
+  const jiraProjectsUserId = jiraConnected && currentUserId ? currentUserId : null;
+  const [jiraProjectsFor, setJiraProjectsFor] = useState<typeof jiraProjectsUserId>(null);
+  if (jiraProjectsFor !== jiraProjectsUserId) {
+    setJiraProjectsFor(jiraProjectsUserId);
+    if (jiraProjectsUserId) {
+      setJiraLoading(true);
+      setJiraProjects([]);
+      setSelectedJiraProject(null);
+    }
+  }
+
   useEffect(() => {
     if (!jiraConnected || !currentUserId) return;
-    setJiraLoading(true);
-    setJiraProjects([]);
-    setSelectedJiraProject(null);
     api.get(`/jira/projects/?user_id=${currentUserId}`)
       .then(res => {
         const projects = res.data as JiraProject[];
@@ -250,11 +260,11 @@ export default function ProjectCreatePage() {
           <div className="w-full max-w-[680px]">
             <StepBar current={step} />
 
-            {checkingJiraStatus ? (
+            {isCheckingJiraStatus ? (
               <div className="text-sm text-gray-400 text-center py-10">Jira 연동 상태 확인 중...</div>
             ) : null}
 
-            {!checkingJiraStatus && step === 0 && (
+            {!isCheckingJiraStatus && step === 0 && (
               <div>
                 <h2 className="text-2xl font-medium text-gray-900 text-center mb-8">
                   jira 계정 연동
@@ -288,7 +298,7 @@ export default function ProjectCreatePage() {
               </div>
             )}
 
-            {!checkingJiraStatus && step === 1 && (
+            {!isCheckingJiraStatus && step === 1 && (
               <div>
                 <h2 className="text-2xl font-medium text-gray-900 text-center mb-2">프로젝트 선택</h2>
                 <p className="text-sm text-gray-500 text-center mb-6 leading-relaxed">
@@ -360,7 +370,7 @@ export default function ProjectCreatePage() {
               </div>
             )}
 
-            {!checkingJiraStatus && step === 2 && (
+            {!isCheckingJiraStatus && step === 2 && (
               <div>
                 <h2 className="text-2xl font-medium text-gray-900 text-center mb-[7px]">구성원 추가하기</h2>
                 <p className="text-sm text-gray-400 text-center mb-6">
@@ -440,7 +450,7 @@ export default function ProjectCreatePage() {
               </div>
             )}
 
-            {!checkingJiraStatus && step === 3 && (
+            {!isCheckingJiraStatus && step === 3 && (
               <div className="flex flex-col items-center text-center py-8">
                 <h2 className="text-3xl font-medium text-gray-900 mb-3">프로젝트 생성 완료</h2>
                 <p className="text-sm text-gray-400 mb-12">자유롭게 프로젝트를 관리해 보세요!</p>
