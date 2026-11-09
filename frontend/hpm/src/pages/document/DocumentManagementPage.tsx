@@ -66,9 +66,19 @@ export default function DocumentManagementPage() {
     }
   }, [projectId]);
 
+  // 프로젝트 선택이 풀리면 렌더 중에 문서 목록을 비운다.
+  const [documentsProjectId, setDocumentsProjectId] = useState(projectId);
+  if (documentsProjectId !== projectId) {
+    setDocumentsProjectId(projectId);
+    if (!projectId) setDocuments([]);
+  }
+
   useEffect(() => {
-    void loadDocuments();
-  }, [loadDocuments]);
+    if (!projectId) return;
+    getDocuments(projectId)
+      .then((data) => setDocuments(data))
+      .catch(() => setDocuments([]));
+  }, [projectId]);
 
   const creators = useMemo(
     () => [
@@ -134,13 +144,17 @@ export default function DocumentManagementPage() {
     return filteredDocuments.slice(startIndex, startIndex + DOCUMENTS_PER_PAGE);
   }, [currentPage, filteredDocuments]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [creatorFilter, endDate, query, sortOrder, startDate, uploadPeriod]);
+  // 목록이 줄어 현재 페이지가 범위를 벗어나면 렌더 중에 마지막 페이지로 맞춘다.
+  const lastPage = Math.max(1, totalPages);
+  if (currentPage > lastPage) {
+    setCurrentPage(lastPage);
+  }
 
-  useEffect(() => {
-    setCurrentPage((page) => Math.min(page, Math.max(1, totalPages)));
-  }, [totalPages]);
+  // 필터·정렬 값이 실제로 바뀔 때만 첫 페이지로 돌아간다.
+  const changeFilter = (setter: (value: string) => void, current: string) => (value: string) => {
+    setter(value);
+    if (value !== current) setCurrentPage(1);
+  };
 
   const allVisibleSelected =
     pagedDocuments.length > 0 &&
@@ -227,18 +241,18 @@ export default function DocumentManagementPage() {
           sortOrder={sortOrder}
           currentPage={currentPage}
           totalPages={totalPages}
-          onCreatorFilterChange={setCreatorFilter}
+          onCreatorFilterChange={changeFilter(setCreatorFilter, creatorFilter)}
           onDeleteSelected={() => void deleteSelected()}
           onDownloadSelected={downloadSelected}
           onOpenUpload={() => navigate("/documents/upload")}
-          onQueryChange={setQuery}
+          onQueryChange={changeFilter(setQuery, query)}
           onPageChange={setCurrentPage}
           onToggleAllVisible={toggleAllVisible}
           onToggleSelected={toggleSelected}
-          onUploadPeriodChange={setUploadPeriod}
-          onStartDateChange={setStartDate}
-          onEndDateChange={setEndDate}
-          onSortOrderChange={setSortOrder}
+          onUploadPeriodChange={changeFilter(setUploadPeriod, uploadPeriod)}
+          onStartDateChange={changeFilter(setStartDate, startDate)}
+          onEndDateChange={changeFilter(setEndDate, endDate)}
+          onSortOrderChange={changeFilter(setSortOrder, sortOrder)}
           onDownloadDocument={downloadDocumentFile}
         />
       </section>

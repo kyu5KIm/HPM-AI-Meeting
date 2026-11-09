@@ -36,58 +36,70 @@ const toInviteCandidate = (user: UserListItem): MemberInviteCandidate => ({
 
 export default function MemberManagementPage() {
   const { projectId, user } = useAuth();
+  const userId = user?.users_id;
   const [members, setMembers] = useState<MemberRecord[]>([]);
   const [candidates, setCandidates] = useState<MemberInviteCandidate[]>([]);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [canInvite, setCanInvite] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
-  const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [loadingCandidates, setLoadingCandidates] = useState(true);
   const [addingMembers, setAddingMembers] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const applyProject = useCallback((project: ProjectDetail) => {
+    setCanInvite(project.project_owner === userId);
+    setMembers(project.members.map((member) => toMemberRecord(project, member)));
+  }, [userId]);
+
+  const clearMembers = useCallback(() => {
+    setMembers([]);
+    setCanInvite(false);
+  }, []);
+
   const loadProjectMembers = useCallback(async () => {
     if (!projectId) {
-      setMembers([]);
-      setCanInvite(false);
+      clearMembers();
       return;
     }
 
     setLoadingMembers(true);
     try {
-      const project = await getProjectDetail(projectId);
-      setCanInvite(project.project_owner === user?.users_id);
-      setMembers(project.members.map((member) => toMemberRecord(project, member)));
+      applyProject(await getProjectDetail(projectId));
     } catch {
-      setMembers([]);
-      setCanInvite(false);
+      clearMembers();
     } finally {
       setLoadingMembers(false);
     }
-  }, [projectId, user?.users_id]);
+  }, [applyProject, clearMembers, projectId]);
 
-  const loadCandidates = useCallback(async () => {
-    setLoadingCandidates(true);
-    try {
-      const users = await getUserList();
-      setCandidates(users.map(toInviteCandidate));
-    } catch {
-      setCandidates([]);
-    } finally {
-      setLoadingCandidates(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadProjectMembers();
-  }, [loadProjectMembers]);
-
-  useEffect(() => {
+  // 프로젝트나 사용자가 바뀌면 렌더 중에 목록 상태를 맞추고, 요청은 아래 effect에서 보낸다.
+  const membersKey = `${projectId ?? ""}:${userId ?? ""}`;
+  const [loadedMembersKey, setLoadedMembersKey] = useState<string | null>(null);
+  const [pageProjectId, setPageProjectId] = useState(projectId);
+  if (loadedMembersKey !== membersKey) {
+    setLoadedMembersKey(membersKey);
+    if (!projectId) clearMembers();
+    else setLoadingMembers(true);
+  }
+  if (pageProjectId !== projectId) {
+    setPageProjectId(projectId);
     setCurrentPage(1);
-  }, [projectId]);
+  }
 
   useEffect(() => {
-    void loadCandidates();
-  }, [loadCandidates]);
+    if (!projectId) return;
+    getProjectDetail(projectId)
+      .then(applyProject)
+      .catch(clearMembers)
+      .finally(() => setLoadingMembers(false));
+  }, [applyProject, clearMembers, projectId]);
+
+  useEffect(() => {
+    getUserList()
+      .then((users) => setCandidates(users.map(toInviteCandidate)))
+      .catch(() => setCandidates([]))
+      .finally(() => setLoadingCandidates(false));
+  }, []);
 
   const inviteCandidates = useMemo(() => {
     const memberIds = new Set(members.map((member) => member.id));
@@ -100,9 +112,11 @@ export default function MemberManagementPage() {
     return members.slice(startIndex, startIndex + MEMBERS_PER_PAGE);
   }, [currentPage, members]);
 
-  useEffect(() => {
-    setCurrentPage((page) => Math.min(page, Math.max(1, totalPages)));
-  }, [totalPages]);
+  // 목록이 줄어 현재 페이지가 범위를 벗어나면 렌더 중에 마지막 페이지로 맞춘다.
+  const lastPage = Math.max(1, totalPages);
+  if (currentPage > lastPage) {
+    setCurrentPage(lastPage);
+  }
 
   const addMembers = async (selectedCandidates: MemberInviteCandidate[]) => {
     if (!projectId || selectedCandidates.length === 0) return;
