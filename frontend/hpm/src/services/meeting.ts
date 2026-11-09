@@ -14,7 +14,9 @@ api.interceptors.request.use((config) => {
     if (user?.access) {
       config.headers.Authorization = `Bearer ${user.access}`;
     }
-  } catch {}
+  } catch {
+    // 저장된 사용자 정보가 깨져 있으면 인증 헤더 없이 요청한다.
+  }
   return config;
 });
 
@@ -484,6 +486,9 @@ export const createProject = async (data: { name: string; description: string })
 // ── OCR서버 -> 텍스트 추출 -> ocr텍스트 + 회의 제목 -> 안건 생성 ─────────────────────────────────────────────────────
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const getResponseErrorMessage = (error: unknown): string | undefined =>
+  (error as { response?: { data?: { error?: string } } } | null)?.response?.data?.error;
+
 export const generateAgendaWithOcr = async (
   meetingId: number,
   file: File | null
@@ -517,11 +522,11 @@ export const generateAgendaWithOcr = async (
         }
 
         throw new Error(statusRes.data.error || "안건 생성 중 알 수 없는 응답 상태입니다.");
-      } catch (error: any) {
+      } catch (error) {
         console.error("상태 확인 중 에러 발생:", error);
-        const errMsg = error.response?.data?.error;
+        const errMsg = getResponseErrorMessage(error);
         if (errMsg) {
-          throw new Error(errMsg);
+          throw new Error(errMsg, { cause: error });
         }
       }
     }
@@ -598,11 +603,11 @@ export const generatePrepMaterial = async (
         }
 
         throw new Error(statusRes.data.error || "준비 자료 생성 중 알 수 없는 응답 상태입니다.");
-      } catch (error: any) {
+      } catch (error) {
         console.error("준비 자료 상태 확인 중 에러 발생:", error);
-        const errMsg = error.response?.data?.error;
+        const errMsg = getResponseErrorMessage(error);
         if (errMsg) {
-          throw new Error(errMsg);
+          throw new Error(errMsg, { cause: error });
         }
         attempts++;
       }

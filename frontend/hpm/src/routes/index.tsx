@@ -1,7 +1,5 @@
-import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
-import type { ReactNode } from "react";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import Layout from "../components/layout/Layout";
-import { useAuth } from "../context/AuthContext";
 import LoginPage from "../pages/auth/LoginPage";
 import ChangePasswordPage from "../pages/auth/ChangePasswordPage";
 import ProjectSelectPage from "../pages/project/ProjectSelectPage";
@@ -26,30 +24,7 @@ import DocumentUploadPage from "../pages/document/DocumentUploadPage";
 import MemberManagementPage from "../pages/member/MemberManagementPage";
 import UserManagementPage from "../pages/admins/UserManagementPage";
 import NotFoundPage from "../pages/error/NotFoundPage";
-
-
-
-function DocumentRoutes() {
-  return <Outlet />;
-}
-
-function RequireAdmin({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
-
-  if (isLoading) {
-    return <div className="p-8 text-gray-400">권한을 확인하는 중...</div>;
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (user.role !== "ADMIN") {
-    return <Navigate to="/projects" replace />;
-  }
-
-  return children;
-}
+import { DocumentRoutes, RequireAdmin } from "./RouteGuards";
 
 const router = createBrowserRouter([
   {

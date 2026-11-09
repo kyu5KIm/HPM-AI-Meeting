@@ -19,6 +19,19 @@ interface AdminUser {
   status: number;
 }
 
+interface AdminUserResponse {
+  users_id: number;
+  emp_no: string;
+  name: string;
+  email: string;
+  dept_name: string;
+  rank_name: string;
+  work: string;
+  status: number;
+}
+
+type ApiError = { response?: { data?: { error?: string } } } | null | undefined;
+
 interface UserProject {
   id: number;
   project_name: string;
@@ -64,6 +77,29 @@ const INIT_ERRORS: RegisterErrors = {
 };
 const USERS_PER_PAGE = 10;
 
+// 공통 모달 레이아웃
+function ConfirmModal({
+  message, onConfirm, onCancel,
+}: { message: React.ReactNode; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+      <div className="bg-white rounded-xl p-10 w-[560px] shrink-0">
+        <p className="text-[16px] text-[#623FB5] font-medium text-center leading-relaxed mb-10">{message}</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel}
+            className="flex-1 py-3 border border-[#E5E5E5] rounded-md text-[15px] text-[#0A0A0A] hover:bg-[#F6F5FA] transition-colors">
+            취소
+          </button>
+          <button onClick={onConfirm}
+            className="flex-1 py-3 bg-[#623FB5] text-white rounded-md text-[15px] hover:opacity-90 transition-opacity">
+            확인
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function UserManagementPage() {
   // ── 사용자 목록 (CRUD 반영) ──────────────────────────────────────
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -99,9 +135,8 @@ export default function UserManagementPage() {
   const [registerErrors, setRegisterErrors] = useState<RegisterErrors>(INIT_ERRORS);
 
   useEffect(() => {
-  setIsLoading(true);
   fetchAdminUsers()
-    .then((data: any[]) => {
+    .then((data: AdminUserResponse[]) => {
       setUsers(data.map((u) => ({
         users_id: u.users_id,
         emp_no: u.emp_no,
@@ -135,13 +170,17 @@ export default function UserManagementPage() {
     currentPage * USERS_PER_PAGE,
   );
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [deptFilter, rankFilter, search, statusFilter]);
+  // 목록이 줄어 현재 페이지가 범위를 벗어나면 렌더 중에 마지막 페이지로 맞춘다.
+  const lastPage = Math.max(1, totalPages);
+  if (currentPage > lastPage) {
+    setCurrentPage(lastPage);
+  }
 
-  useEffect(() => {
-    setCurrentPage((page) => Math.min(page, Math.max(1, totalPages)));
-  }, [totalPages]);
+  // 필터 값이 실제로 바뀔 때만 첫 페이지로 돌아간다.
+  const changeFilter = (setter: (value: string) => void, current: string) => (value: string) => {
+    setter(value);
+    if (value !== current) setCurrentPage(1);
+  };
 
   // ── 체크박스 ─────────────────────────────────────────────────────
   const handleSelectAll = (checked: boolean) => {
@@ -176,8 +215,8 @@ export default function UserManagementPage() {
     setUsers((prev) => prev.filter((u) => !selectedIds.includes(u.users_id)));
     if (selectedUser && selectedIds.includes(selectedUser.users_id)) setSelectedUser(null);
     setSelectedIds([]);
-  } catch (e: any) {
-    const msg = e?.response?.data?.error ?? "삭제에 실패했습니다.";
+  } catch (e) {
+    const msg = (e as ApiError)?.response?.data?.error ?? "삭제에 실패했습니다.";
     alert(msg);
   } finally {
     setShowDeleteModal(false);
@@ -267,8 +306,8 @@ export default function UserManagementPage() {
     setRegisterForm(INIT_REGISTER);
     setRegisterErrors(INIT_ERRORS);
     setShowRegisterModal(false);
-  } catch (e: any) {
-    alert(e?.response?.data?.error ?? "등록에 실패했습니다.");
+  } catch (e) {
+    alert((e as ApiError)?.response?.data?.error ?? "등록에 실패했습니다.");
   }
 };
 
@@ -277,27 +316,6 @@ export default function UserManagementPage() {
     setRegisterForm(INIT_REGISTER);
     setRegisterErrors(INIT_ERRORS);
   };
-
-  // 공통 모달 레이아웃 
-  const ConfirmModal = ({
-    message, onConfirm, onCancel,
-  }: { message: React.ReactNode; onConfirm: () => void; onCancel: () => void }) => (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-xl p-10 w-[560px] shrink-0">
-        <p className="text-[16px] text-[#623FB5] font-medium text-center leading-relaxed mb-10">{message}</p>
-        <div className="flex gap-3">
-          <button onClick={onCancel}
-            className="flex-1 py-3 border border-[#E5E5E5] rounded-md text-[15px] text-[#0A0A0A] hover:bg-[#F6F5FA] transition-colors">
-            취소
-          </button>
-          <button onClick={onConfirm}
-            className="flex-1 py-3 bg-[#623FB5] text-white rounded-md text-[15px] hover:opacity-90 transition-opacity">
-            확인
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-[#F6F5FA] flex flex-col">
@@ -315,7 +333,7 @@ export default function UserManagementPage() {
           <div className="flex items-center border border-[#E5E5E5] rounded-md px-4 mb-4 bg-white">
             <input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => changeFilter(setSearch, search)(e.target.value)}
               placeholder="이름, 사원번호, 이메일 검색"
               className="flex-1 py-3 text-[15px] outline-none"
             />
@@ -327,11 +345,11 @@ export default function UserManagementPage() {
           {/* 필터 + 버튼 */}
           <div className="flex items-center gap-3 mb-5">
             <span className="text-[15px] text-[#0A0A0A]">부서</span>
-            <Dropdown options={["전체", ...DEPT_OPTIONS]} value={deptFilter} onChange={setDeptFilter} dropdownClassName="w-32" />
+            <Dropdown options={["전체", ...DEPT_OPTIONS]} value={deptFilter} onChange={changeFilter(setDeptFilter, deptFilter)} dropdownClassName="w-32" />
             <span className="text-[15px] text-[#0A0A0A]">직급</span>
-            <Dropdown options={["전체", ...RANK_OPTIONS]} value={rankFilter} onChange={setRankFilter} dropdownClassName="w-32" />
+            <Dropdown options={["전체", ...RANK_OPTIONS]} value={rankFilter} onChange={changeFilter(setRankFilter, rankFilter)} dropdownClassName="w-32" />
             <span className="text-[15px] text-[#0A0A0A]">상태</span>
-            <Dropdown options={["전체", "재직", "휴직", "퇴사"]} value={statusFilter} onChange={setStatusFilter} dropdownClassName="w-32" />
+            <Dropdown options={["전체", "재직", "휴직", "퇴사"]} value={statusFilter} onChange={changeFilter(setStatusFilter, statusFilter)} dropdownClassName="w-32" />
             <div className="flex gap-2 ml-auto">
               <button
                 onClick={() => setShowRegisterModal(true)}

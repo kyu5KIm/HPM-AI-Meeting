@@ -50,8 +50,8 @@ const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     } else {
       navigate("/projects");
     }
-  } catch (err: any) {
-    const msg = err?.response?.data?.error ?? "";
+  } catch (err) {
+    const msg = (err as { response?: { data?: { error?: string } } } | null)?.response?.data?.error ?? "";
     if (msg === "잠금 처리된 계정입니다.") {
       setPasswordError("계정이 잠금 처리되었습니다. 관리자에게 연락해주세요.");
     } else {

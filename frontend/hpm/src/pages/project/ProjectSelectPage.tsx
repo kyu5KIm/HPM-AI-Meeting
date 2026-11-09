@@ -25,11 +25,16 @@ export default function ProjectSelectPage() {
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [projectsUser, setProjectsUser] = useState(user);
+
+  // 다른 사용자로 바뀌면 렌더 중에 로딩 상태를 다시 켠다.
+  if (projectsUser !== user) {
+    setProjectsUser(user);
+    if (user) setLoading(true);
+  }
 
   useEffect(() => {
     if (!user) return;
-
-    setLoading(true);
 
     api.get("/projects/", {
       params: {

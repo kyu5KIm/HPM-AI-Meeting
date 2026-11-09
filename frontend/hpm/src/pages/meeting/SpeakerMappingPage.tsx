@@ -88,6 +88,16 @@ export default function SpeakerMappingPage() {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
+  const userId = user?.users_id;
+  const [loadingKey, setLoadingKey] = useState({ meetingId, userId });
+
+  // 회의나 사용자가 바뀌면 렌더 중에 로딩·오류 상태를 다시 맞춘다.
+  if (!Object.is(loadingKey.meetingId, meetingId) || loadingKey.userId !== userId) {
+    setLoadingKey({ meetingId, userId });
+    setLoading(true);
+    setError("");
+  }
+
   const { allowReviewNavigation, reviewExitModal } = useMeetingReviewNavigationGuard({
     enabled: !loading && !error,
     meetingId,
@@ -95,9 +105,6 @@ export default function SpeakerMappingPage() {
 
   useEffect(() => {
     let cancelled = false;
-
-    setLoading(true);
-    setError("");
 
     const loadSpeakerMapping = async () => {
       try {

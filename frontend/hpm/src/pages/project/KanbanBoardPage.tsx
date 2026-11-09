@@ -113,19 +113,31 @@ export default function KanbanBoardPage() {
   const [canManageJira, setCanManageJira] = useState(false);
   const [jiraParentOptions, setJiraParentOptions] = useState<JiraParentOption[]>([]);
 
-  useEffect(() => {
+  // 프로젝트나 사용자가 바뀌면 렌더 중에 보드 상태를 맞추고, 요청은 아래 effect에서 보낸다.
+  const [boardFor, setBoardFor] = useState<{ projectId: typeof projectId; user: typeof user } | null>(null);
+  if (!boardFor || boardFor.projectId !== projectId || boardFor.user !== user) {
+    setBoardFor({ projectId, user });
     if (!user || !projectId) {
       setTasks([]);
       setBoardColumns(KANBAN_COLUMNS);
       setJiraParentOptions([]);
       setCanManageJira(false);
       setLoading(false);
-      setError(null);
-      return;
+    } else {
+      setLoading(true);
     }
-
-    setLoading(true);
     setError(null);
+  }
+
+  // 프로젝트 선택이 풀리면 구성원 목록도 비운다.
+  const [membersProjectId, setMembersProjectId] = useState(projectId);
+  if (membersProjectId !== projectId) {
+    setMembersProjectId(projectId);
+    if (!projectId) setMembers([]);
+  }
+
+  useEffect(() => {
+    if (!user || !projectId) return;
 
     getProjectJiraBoard(projectId)
       .then((board) => {
@@ -154,10 +166,7 @@ export default function KanbanBoardPage() {
   }, [projectId, user]);
 
   useEffect(() => {
-    if (!projectId) {
-      setMembers([]);
-      return;
-    }
+    if (!projectId) return;
 
     getProjectDetail(projectId)
       .then((project) => setMembers(project.members || []))

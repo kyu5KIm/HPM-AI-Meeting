@@ -25,11 +25,14 @@ export default function FloatingChatbot() {
   const startPos = useRef({ x: 0, y: 0 });
   const startSize = useRef({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT });
 
+  const [chatProjectId, setChatProjectId] = useState(projectId);
+
   // 프로젝트 바뀌면 대화 초기화
-  useEffect(() => {
+  if (chatProjectId !== projectId) {
+    setChatProjectId(projectId);
     setChatMessages([]);
     setChatInput("");
-  }, [projectId]);
+  }
 
   // 메시지 추가될 때 스크롤 아래로
   useEffect(() => {
@@ -58,7 +61,9 @@ export default function FloatingChatbot() {
     document.body.style.cursor = "";
   }, [onMouseMove]);
 
-  onMouseUpRef.current = onMouseUp;
+  useEffect(() => {
+    onMouseUpRef.current = onMouseUp;
+  }, [onMouseUp]);
 
   // 드래그 시작 (좌상단 모서리)
   const onResizeMouseDown = (e: React.MouseEvent) => {

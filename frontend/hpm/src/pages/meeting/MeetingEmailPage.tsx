@@ -47,9 +47,15 @@ export default function MeetingEmailPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [loadingMeetingId, setLoadingMeetingId] = useState(meetingId);
+
+  // 다른 회의로 이동하면 렌더 중에 로딩 상태를 다시 켠다.
+  if (!Object.is(loadingMeetingId, meetingId)) {
+    setLoadingMeetingId(meetingId);
+    setLoading(true);
+  }
 
   useEffect(() => {
-    setLoading(true);
     Promise.all([getMeetingDetail(meetingId), getTaskList(meetingId)])
       .then(([meetingDetail, taskList]) => {
         setMeeting(meetingDetail);

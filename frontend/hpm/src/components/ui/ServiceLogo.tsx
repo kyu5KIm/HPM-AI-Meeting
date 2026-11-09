@@ -2,11 +2,10 @@ import { type ComponentPropsWithoutRef } from "react";
 import * as DESIGN from "../../constants/design";
 import logo from "../../assets/login/logo.png"
 
-interface ProjectAddProps extends ComponentPropsWithoutRef<"div"> {
-  className?: string;
-}
+type ServiceLogoProps = ComponentPropsWithoutRef<"div">;
 
-export default function ProjectAdd({ className = "", ...props }: ProjectAddProps) {
+// 전달된 className은 아래 className=""가 덮어쓴다(기존 동작 유지).
+export default function ServiceLogo(props: ServiceLogoProps) {
   return (
     <div
       {...props}

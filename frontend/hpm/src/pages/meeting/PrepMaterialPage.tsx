@@ -22,14 +22,20 @@ export default function PrepMaterialPage() {
   const [sources, setSources] = useState<{ document_id: number; title: string; file_url: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [generationError, setGenerationError] = useState("");
+  const [loadingMeetingId, setLoadingMeetingId] = useState(meetingId);
+
+  // 다른 회의로 이동하면 렌더 중에 로딩·오류 상태를 다시 맞춘다.
+  if (!Object.is(loadingMeetingId, meetingId)) {
+    setLoadingMeetingId(meetingId);
+    setLoading(true);
+    setGenerationError("");
+  }
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
- 
+
     const loadData = async () => {
       try {
-        setGenerationError("");
         const prep = await getPrepMaterial(meetingId);
         if (active) {
           if (prep.purpose || prep.project_status || prep.rule || prep.effect) {
