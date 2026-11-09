@@ -8,3 +8,6 @@ db.sqlite3
 .git
 .vscode
 .vite-cache/
+.pytest_cache/
+test_flow/rag_eval/results/
+test_flow/kordoc/node_modules/

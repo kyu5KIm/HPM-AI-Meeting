@@ -6,10 +6,25 @@ import {
   KANBAN_FIRST_CARD_TOP,
 } from "../../constants/kanban";
 import type { KanbanColumnConfig, KanbanColumnId, KanbanTask } from "../../types/kanban";
-import KanbanCard from "./KanbanCard";
+import KanbanCard, { type KanbanDropSide } from "./KanbanCard";
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
+
+// 카드가 들어갈 자리를 보여주는 선 (Jira처럼 왼쪽에 원이 붙은 가로선)
+function DropIndicator({ edge }: { edge: "top" | "bottom" }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute left-[23px] z-10 h-[2px] w-[306px] bg-[#623FB5]",
+        edge === "top" ? "top-[-10px]" : "bottom-[-10px]",
+      )}
+    >
+      <span className="absolute left-[-4px] top-[-3px] size-[8px] rounded-full border-2 border-[#623FB5] bg-[#FFFDFD]" />
+    </div>
+  );
+}
 
 interface AddTaskButtonProps {
   className: string;
@@ -62,8 +77,11 @@ interface KanbanColumnProps {
   onEditTask: (task: KanbanTask) => void;
   onCardDragStart?: (task: KanbanTask) => void;
   onCardDragEnd?: () => void;
-  onDropOnColumn?: (columnId: KanbanColumnId) => void;
-  onDropOnCard?: (task: KanbanTask) => void;
+  // beforeTask 앞에 놓기. null이면 컬럼 맨 끝
+  onDropAt?: (columnId: KanbanColumnId, beforeTask: KanbanTask | null) => void;
+  // 보드 전체에서 표시선은 한 컬럼에만 그린다. 상위가 마지막으로 dragover된 컬럼을 관리한다.
+  isDropTarget?: boolean;
+  onColumnDragOver?: (columnId: KanbanColumnId) => void;
   draggingTaskId?: number | null;
   canManage?: boolean;
 }
@@ -75,29 +93,55 @@ export default function KanbanColumn({
   onEditTask,
   onCardDragStart,
   onCardDragEnd,
-  onDropOnColumn,
-  onDropOnCard,
+  onDropAt,
+  isDropTarget = true,
+  onColumnDragOver,
   draggingTaskId = null,
   canManage = true,
 }: KanbanColumnProps) {
 
   const hasTasks = tasks.length > 0;
-  const [isOver, setIsOver] = useState(false);
+  // 드래그 중인 카드가 들어갈 자리(0 ~ tasks.length). "카드 i 뒤"와 "카드 i+1 앞"은 같은 자리로 본다.
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+
+  // 같은 컬럼에서 자기 바로 앞·뒤 자리는 순서가 그대로라 표시하지 않는다.
+  const draggingIndex = tasks.findIndex((task) => task.id === draggingTaskId);
+  const isNoopIndex = (index: number) =>
+    draggingIndex >= 0 && (index === draggingIndex || index === draggingIndex + 1);
+  const activeDropIndex =
+    isDropTarget && draggingTaskId !== null && dropIndex !== null && !isNoopIndex(dropIndex)
+      ? dropIndex
+      : null;
+
+  const updateDropIndex = (index: number) => {
+    if (dropIndex !== index) setDropIndex(index);
+    if (!isDropTarget) onColumnDragOver?.(column.id);
+  };
+
+  const handleCardDragOver = (task: KanbanTask, side: KanbanDropSide) => {
+    const index = tasks.findIndex((t) => t.id === task.id);
+    updateDropIndex(side === "before" ? index : index + 1);
+  };
 
   const handleDragOver = (e: DragEvent<HTMLElement>) => {
     if (!canManage) return;
     e.preventDefault(); // drop 허용
     e.dataTransfer.dropEffect = "move";
-    if (!isOver) setIsOver(true);
+    updateDropIndex(tasks.length); // 카드가 아닌 빈 공간 → 컬럼 맨 끝
   };
 
-  const handleDragLeave = () => setIsOver(false);
+  const handleDragLeave = (e: DragEvent<HTMLElement>) => {
+    // 자식 요소로 옮겨갈 때도 dragleave가 발생하므로, 컬럼 밖으로 나갈 때만 지운다.
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropIndex(null);
+  };
 
   const handleDrop = (e: DragEvent<HTMLElement>) => {
     if (!canManage) return;
     e.preventDefault();
-    setIsOver(false);
-    onDropOnColumn?.(column.id); // 빈 공간 드롭 → 컬럼 맨 끝으로
+    const index = activeDropIndex;
+    setDropIndex(null);
+    if (index === null) return; // 제자리
+    onDropAt?.(column.id, tasks[index] ?? null);
   };
 
   return (
@@ -125,17 +169,25 @@ export default function KanbanColumn({
           {hasTasks ? (
             <>
               {tasks.map((task, index) => (
-                <KanbanCard
-                  key={task.id}
-                  task={task}
-                  top={KANBAN_FIRST_CARD_TOP + index * KANBAN_CARD_GAP}
-                  onClick={() => onEditTask(task)}
-                  canManage={canManage}
-                  isDragging={draggingTaskId === task.id}
-                  onDragStart={onCardDragStart}
-                  onDragEnd={onCardDragEnd}
-                  onDropOnCard={onDropOnCard}
-                />
+                <div key={task.id} className="relative">
+                  {activeDropIndex === index ? <DropIndicator edge="top" /> : null}
+                  <KanbanCard
+                    task={task}
+                    top={KANBAN_FIRST_CARD_TOP + index * KANBAN_CARD_GAP}
+                    onClick={() => onEditTask(task)}
+                    canManage={canManage}
+                    isDragging={draggingTaskId === task.id}
+                    onDragStart={onCardDragStart}
+                    onDragEnd={() => {
+                      setDropIndex(null);
+                      onCardDragEnd?.();
+                    }}
+                    onDragOverCard={handleCardDragOver}
+                  />
+                  {activeDropIndex === tasks.length && index === tasks.length - 1 ? (
+                    <DropIndicator edge="bottom" />
+                  ) : null}
+                </div>
               ))}
               {canManage ? (
                 <AddTaskButton
@@ -145,7 +197,10 @@ export default function KanbanColumn({
               ) : null}
             </>
           ) : (
-            canManage ? <EmptyAddCard onClick={() => onAddTask(column.id)} /> : null
+            <div className="relative">
+              {activeDropIndex === 0 ? <DropIndicator edge="top" /> : null}
+              {canManage ? <EmptyAddCard onClick={() => onAddTask(column.id)} /> : null}
+            </div>
           )}
         </div>
       </div>

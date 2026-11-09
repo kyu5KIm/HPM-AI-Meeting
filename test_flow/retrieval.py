@@ -124,10 +124,16 @@ def _source_types_for_scope(scope: str, source_types: list[str] | None = None) -
     return ["meeting_minutes", "internal_document"]
 
 
+def _rerank_provider() -> str:
+    return os.getenv("RERANK_PROVIDER", "kure").strip().lower()
+
+
 def _skip_rerank_default() -> bool:
     explicit = os.getenv("RAG_SKIP_RERANK")
-    if explicit is not None:
+    if explicit is not None and explicit.strip():
         return explicit.lower() == "true"
+    if _rerank_provider() == "kure":
+        return not bool(os.getenv("KURE_API_KEY"))
     return not bool(os.getenv("COHERE_API_KEY") or os.getenv("CO_API_KEY"))
 
 
@@ -322,6 +328,8 @@ def _search_args(
         exclude_chunk_types=os.getenv("RAG_EXCLUDE_CHUNK_TYPES", "image_caption,chart_caption"),
         skip_rerank=_skip_rerank_default(),
         cohere_model=os.getenv("COHERE_RERANK_MODEL", "rerank-v3.5"),
+        rerank_provider=_rerank_provider(),
+        rerank_model=os.getenv("RERANK_MODEL") or None,
         max_tokens_per_doc=int(os.getenv("RAG_MAX_TOKENS_PER_DOC", "4096")),
     )
 
@@ -593,6 +601,32 @@ def feature_chat_retrieve(
         "document_lookup": document_lookup,
         "document_lookup_matches": module.answer_source_references(metadata_hits) if metadata_hits else [],
     }
+
+
+def feature_chat_ranked_hits(
+    question: str,
+    *,
+    top_k: int,
+    project_id: Any = None,
+    meeting_id: Any = None,
+    source_scope: str = "project",
+    source_types: list[str] | None = None,
+) -> list[Any]:
+    """/chat과 같은 검색 경로(Dense + BM25 -> RRF -> Rerank)로 상위 top_k 청크를 반환한다. 평가용."""
+    bundle = load_feature_chat_rag(project_id=project_id)
+    module = bundle.query_module
+    args = _search_args(
+        module,
+        question,
+        top_k=top_k,
+        project_id=project_id,
+        meeting_id=meeting_id,
+        source_scope=source_scope,
+        source_types=source_types,
+    )
+    if not bundle.records:
+        return []
+    return _retrieve_with_meeting_filter_fallback(module, args, bundle)
 
 
 def preparation_query(req: PreparationRequest) -> str:
