@@ -678,12 +678,67 @@ def project_jira_board_issue_status(request, project_id, issue_key):
     )
 
     if not result.get("success"):
+        return _jira_status_error_response(issue_key, result)
+
+    return Response(result, status=status.HTTP_200_OK)
+
+
+def _jira_status_error_response(issue_key, result):
+    """update_jira_issue_status 실패 결과를 원인(reason)별 HTTP 상태와 안내 문구로 바꾼다."""
+    reason = result.get("reason")
+    target = result.get("target_status") or ""
+
+    if reason == "transition_not_found":
+        # 워크플로우 제약: 요청은 정상이지만 현재 상태와 충돌한다.
+        current = result.get("current_status")
+        available = [name for name in result.get("available_statuses") or [] if name]
+        message = (
+            f"{issue_key}은(는) 현재 상태({current})에서 '{target}'(으)로 옮길 수 없습니다."
+            if current
+            else f"{issue_key}은(는) 현재 상태에서 '{target}'(으)로 옮길 수 없습니다."
+        )
+        message += (
+            f" 이동 가능한 상태: {', '.join(available)}"
+            if available
+            else " 현재 상태에서 이동 가능한 상태가 없습니다."
+        )
+        return Response({"error": message, "reason": reason, "detail": result}, status=status.HTTP_409_CONFLICT)
+
+    if reason == "unknown_column":
         return Response(
-            {"error": "Jira 상태 변경에 실패했습니다.", "detail": result},
+            {"error": "알 수 없는 보드 컬럼입니다. 보드를 새로고침해 주세요.", "reason": reason, "detail": result},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if reason == "transitions_fetch_failed":
+        jira_status = result.get("jira_status")
+        if jira_status == 404:
+            return Response(
+                {"error": f"Jira에서 {issue_key} 이슈를 찾을 수 없습니다. 삭제됐거나 권한이 없습니다.", "reason": reason, "detail": result},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if jira_status in (401, 403):
+            return Response(
+                {"error": "Jira 권한이 없어 상태를 바꿀 수 없습니다. Jira 연동을 다시 해 주세요.", "reason": reason, "detail": result},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response(
+            {"error": "Jira에서 상태 전환 목록을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.", "reason": reason, "detail": result},
             status=status.HTTP_502_BAD_GATEWAY,
         )
 
-    return Response(result, status=status.HTTP_200_OK)
+    if reason == "transition_failed":
+        # 필수 필드(예: 해결 방법) 누락 등 Jira가 전환 실행을 거부한 경우
+        jira_messages = result.get("jira_messages") or []
+        message = f"Jira가 '{target}'(으)로의 상태 변경을 거부했습니다."
+        if jira_messages:
+            message += f" ({'; '.join(jira_messages)})"
+        return Response({"error": message, "reason": reason, "detail": result}, status=status.HTTP_502_BAD_GATEWAY)
+
+    return Response(
+        {"error": "Jira 상태 변경에 실패했습니다.", "reason": reason, "detail": result},
+        status=status.HTTP_502_BAD_GATEWAY,
+    )
 
 
 @api_view(["PATCH"])
@@ -723,7 +778,15 @@ def project_jira_board_issue_rank(request, project_id, issue_key):
         after_issue_key=after_issue_key,
     )
     if not result.get("success"):
-        return Response({"error": "Jira 순서 변경에 실패했습니다.", "detail": result}, status=status.HTTP_502_BAD_GATEWAY)
+        # 예: 보드가 없는 프로젝트(서비스 관리형)는 Rank 필드가 없어 순서 변경이 거부된다.
+        jira_messages = result.get("jira_messages") or []
+        message = "Jira 순서 변경에 실패했습니다."
+        if jira_messages:
+            message += f" ({'; '.join(jira_messages)})"
+        return Response(
+            {"error": message, "reason": result.get("reason", "rank_failed"), "detail": result},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
     return Response(result, status=status.HTTP_200_OK)
 
 

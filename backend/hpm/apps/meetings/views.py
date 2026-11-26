@@ -80,13 +80,21 @@ def _ocr_upload_document_response(document):
     }
 
 
+def meeting_datetime_text(meeting):
+    """회의 일시를 서버 시간대(Asia/Seoul) 기준 'YYYY-MM-DD HH:MM'으로. 회의록과 검색 청크 헤더에 같이 쓴다."""
+    if not meeting.meeting_at:
+        return ""
+    value = timezone.localtime(meeting.meeting_at) if timezone.is_aware(meeting.meeting_at) else meeting.meeting_at
+    return value.strftime("%Y-%m-%d %H:%M")
+
+
 def _minutes_payload(meeting, text):
     return {
         "text": text,
         "meeting_id": str(meeting.meeting_id),
         "project_id": str(meeting.project_id),
         "title": meeting.title or "",
-        "meeting_datetime": str(meeting.meeting_at or ""),
+        "meeting_datetime": meeting_datetime_text(meeting),
         "location": meeting.location or "",
     }
 
@@ -374,7 +382,11 @@ def meeting_list(request):
     if not meeting_at:
         return Response({"error": "회의 일정을 입력해주세요."}, status=status.HTTP_400_BAD_REQUEST)
     from datetime import timezone as dt_timezone
-    if datetime.fromisoformat(str(meeting_at)).replace(tzinfo=dt_timezone.utc) <= timezone.now():
+    try:
+        parsed_meeting_at = datetime.fromisoformat(str(meeting_at))
+    except ValueError:
+        return Response({"error": "회의 일정 형식이 올바르지 않습니다."}, status=status.HTTP_400_BAD_REQUEST)
+    if parsed_meeting_at.replace(tzinfo=dt_timezone.utc) <= timezone.now():
         return Response({"error": "현재 시각 이후의 일정만 등록할 수 있습니다."}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -614,6 +626,9 @@ def end_meeting(request, meeting_id):
         return error_response
     if not _can_control_meeting(request, meeting):
         return Response({"error": "회의 생성자만 회의를 종료할 수 있습니다."}, status=status.HTTP_403_FORBIDDEN)
+    # 다시 종료하면 STT가 다시 돌아 기존 녹취가 덮어써진다. STT 실패 시에는 종료 상태가 아니라서 재시도할 수 있다.
+    if meeting.meeting_status == Meeting.MeetingStatus.FINISHED:
+        return Response({"error": "이미 종료된 회의입니다."}, status=status.HTTP_400_BAD_REQUEST)
 
     audio_file = request.FILES.get("audio")
     if not audio_file:
@@ -1153,6 +1168,34 @@ def generate_minutes(request, meeting_id):
         "todo_list": data.get("todo_list", [])
     })
 
+# test_flow OCR이 처리할 수 있는 형식. 그 외에는 문서로 저장하기 전에 거절한다.
+OCR_ALLOWED_EXTENSIONS = {".pdf", ".hwp", ".hwpx", ".docx", ".txt", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+
+
+def _ocr_extension_error(uploaded_file):
+    ext = os.path.splitext(uploaded_file.name or "")[1].lower()
+    if ext in OCR_ALLOWED_EXTENSIONS:
+        return None
+    return Response({"error": f"지원하지 않는 파일 형식입니다: {uploaded_file.name}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+def _discard_ocr_source_document(meeting, kind):
+    """OCR이 실패한 원본은 내부 문서 목록에 남기지 않는다. 다시 호출해도 안전하다."""
+    from apps.documents.models import Document
+    from django.core.files.storage import default_storage
+
+    for link in MeetingOcrDocument.objects.filter(meeting=meeting, kind=kind):
+        document = Document.objects.filter(document_id=link.document_id, project_id=meeting.project_id).first()
+        if document:
+            try:
+                if default_storage.exists(document.path):
+                    default_storage.delete(document.path)
+            except Exception as e:
+                print("OCR 원본 삭제 실패(무시):", e)
+            document.delete()
+        link.delete()
+
+
 def _store_ocr_source_document(meeting, uploaded_file, file_bytes, user_id, kind):
     """OCR에 넣은 원본 파일을 S3에 저장 + Document 등록 + 회의 OCR 문서로 연결."""
     from apps.documents.views import get_project_user_or_response
@@ -1201,6 +1244,9 @@ def generate_agenda(request, meeting_id):
         ocr_base_url = settings.RUNPOD_OCR_BASE_URL
         if not ocr_base_url:
             return Response({"error": "OCR 서버 주소가 설정되지 않았습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        extension_error = _ocr_extension_error(uploaded_file)
+        if extension_error:
+            return extension_error
         try:
             file_bytes = uploaded_file.read()
             document = None
@@ -1221,6 +1267,7 @@ def generate_agenda(request, meeting_id):
                 **_ocr_upload_document_response(document),
             }, status=status.HTTP_202_ACCEPTED)
         except Exception as e:
+            _discard_ocr_source_document(meeting, "agenda")
             return Response({"error": f"OCR 처리 실패: {str(e)}"}, status=status.HTTP_502_BAD_GATEWAY)
 
     base_url = settings.RUNPOD_BASE_URL
@@ -1273,6 +1320,7 @@ def check_agenda_status(request, meeting_id):
 
         job_status_lower = str(job_status).lower()
         if job_status_lower in ["failed", "error", "cancelled"]:
+            _discard_ocr_source_document(meeting, "agenda")
             return Response({"error": f"OCR 작업이 실패했습니다. 상태: {job_status}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         elif job_status_lower != "succeeded": 
             return Response({"status": "processing"})
@@ -1435,6 +1483,9 @@ def generate_prep_material(request, meeting_id):
         ocr_base_url = settings.RUNPOD_OCR_BASE_URL
         if not ocr_base_url:
             return Response({"error": "OCR 서버 주소가 설정되지 않았습니다."}, status=status.HTTP_502_BAD_GATEWAY)
+        extension_error = _ocr_extension_error(uploaded_file)
+        if extension_error:
+            return extension_error
         try:
             file_bytes = uploaded_file.read()
             document = None
@@ -1455,6 +1506,7 @@ def generate_prep_material(request, meeting_id):
                 **_ocr_upload_document_response(document),
             }, status=status.HTTP_202_ACCEPTED)
         except Exception as e:
+            _discard_ocr_source_document(meeting, "prep")
             return Response({"error": f"OCR 처리 실패: {str(e)}"}, status=status.HTTP_502_BAD_GATEWAY)
 
     participants = []
@@ -1579,6 +1631,7 @@ def check_prep_status(request, meeting_id):
 
         job_status_lower = str(job_status).lower()
         if job_status_lower in ["failed", "error", "cancelled"]:
+            _discard_ocr_source_document(meeting, "prep")
             return Response({"error": f"OCR 작업이 실패했습니다. 상태: {job_status}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         elif job_status_lower != "succeeded":
             return Response({"status": "processing"})

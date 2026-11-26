@@ -43,11 +43,16 @@ class Tokenizer:
         self.encoding_name = encoding_name
         self._encoding = None
         if tiktoken is not None:
-            try:
-                self._encoding = tiktoken.get_encoding(encoding_name)
-            except Exception:
-                self._encoding = tiktoken.get_encoding("cl100k_base")
-                self.encoding_name = "cl100k_base"
+            for name in dict.fromkeys([encoding_name, "cl100k_base"]):
+                try:
+                    self._encoding = tiktoken.get_encoding(name)
+                    self.encoding_name = name
+                    break
+                except Exception as exc:
+                    # 폐쇄망 등에서 토크나이저 파일을 내려받지 못하면 글자 수 기반 추정으로 동작한다.
+                    print(f"[chunker] tiktoken encoding {name} unavailable: {type(exc).__name__}")
+            if self._encoding is None:
+                self.encoding_name = "char_estimate"
 
     def count(self, text: str) -> int:
         if not text:
@@ -158,7 +163,7 @@ def pdf_hash_map(pdf_dir: Path) -> dict[str, str]:
     mapping: dict[str, str] = {}
     if not pdf_dir.exists():
         return mapping
-    for path in sorted(pdf_dir.rglob("*.pdf")):
+    for path in sorted(item for item in pdf_dir.rglob("*") if item.is_file()):
         h = sha256()
         with path.open("rb") as f:
             for block in iter(lambda: f.read(1024 * 1024), b""):
@@ -233,7 +238,9 @@ def make_prefix(meta: dict[str, Any]) -> str:
     if meta.get("page_start"):
         page = meta["page_start"] if meta.get("page_start") == meta.get("page_end") else f"{meta['page_start']}-{meta['page_end']}"
         parts.append(f"[페이지: {page}]")
-    if meta.get("heading"):
+    if meta.get("heading_path"):
+        parts.append(f"[위치: {' > '.join(meta['heading_path'])}]")
+    elif meta.get("heading"):
         parts.append(f"[제목: {meta['heading']}]")
     if meta.get("article_no"):
         sub = f"의{meta['article_sub_no']}" if meta.get("article_sub_no") else ""
@@ -289,6 +296,9 @@ def base_metadata(blocks: list[dict[str, Any]], chunk_type: str, chunk_version: 
     articles = [article_info(block_text(b)) for b in blocks]
     article = next((a for a in articles if a[0] is not None), (None, None, None))
     headings = [heading_from_text(block_text(b)) for b in blocks]
+    heading_path = next((list(b["heading_path"]) for b in blocks if b.get("heading_path")), [])
+    if heading_path:
+        headings.insert(0, heading_path[-1])
     return {
         "doc_id": first.get("doc_id"),
         "source_pdf": first.get("source_pdf"),
@@ -308,6 +318,7 @@ def base_metadata(blocks: list[dict[str, Any]], chunk_type: str, chunk_version: 
         "article_sub_no": article[1],
         "article_title": article[2],
         "heading": next((h for h in headings if h), None),
+        "heading_path": heading_path,
     }
 
 
@@ -397,6 +408,8 @@ def build_chunks(rows: list[dict[str, Any]], tokenizer: Tokenizer, args: argpars
 
             if art_no is not None:
                 key = ("article", art_no, art_sub)
+            elif block.get("heading_path"):
+                key = ("section_text", tuple(block["heading_path"]))
             else:
                 key = ("section_text", heading_from_text(text), page_no(block))
 

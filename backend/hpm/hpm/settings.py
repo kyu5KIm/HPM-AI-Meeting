@@ -1,9 +1,15 @@
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 import boto3
 
+# 한국어 Windows는 출력이 파이프로 연결되면 cp949를 쓴다. 이모지가 든 print()가
+# UnicodeEncodeError를 내며 요청까지 실패시키지 않도록 UTF-8로 고정한다.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="backslashreplace")
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -123,6 +129,14 @@ RUNPOD_CORE_BASE_URL = os.getenv("RUNPOD_CORE_BASE_URL", os.getenv("RUNPOD_BASE_
 RUNPOD_STT_BASE_URL = os.getenv("RUNPOD_STT_BASE_URL", os.getenv("RUNPOD_BASE_URL", ""))
 RUNPOD_OCR_BASE_URL = os.getenv("RUNPOD_OCR_BASE_URL", "")
 RUNPOD_PARSED_BASE_URL = os.getenv("RUNPOD_PARSED_BASE_URL", os.getenv("RUNPOD_PARSERD_BASE_URL", ""))
+
+# 내부 문서 업로드 허용 확장자. test_flow(kordoc)는 HWP·HWPX를 읽는다.
+# HWP를 지원하지 않는 AI 서버(ai/parsed)에 연결할 때는 ".pdf,.docx,.txt"로 줄인다.
+DOCUMENT_ALLOWED_EXTENSIONS = {
+    ext.strip().lower() if ext.strip().startswith(".") else f".{ext.strip().lower()}"
+    for ext in os.getenv("DOCUMENT_ALLOWED_EXTENSIONS", ".pdf,.hwp,.hwpx,.docx,.txt").split(",")
+    if ext.strip()
+}
 
 RUNPOD_CHAT_URL = RUNPOD_CORE_BASE_URL
 RUNPOD_BASE_URL = RUNPOD_CORE_BASE_URL

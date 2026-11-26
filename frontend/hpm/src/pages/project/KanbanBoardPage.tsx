@@ -48,6 +48,17 @@ const mapKanbanPriorityToJira = (priority: KanbanPriority | "") => {
   return ["Lowest", "Low", "Medium", "High", "Highest"][index] || "Medium";
 };
 
+// 카드 이동 실패 원인 안내: 백엔드가 원인별로 내려주는 error 문구를 우선 쓰고, 없으면 HTTP 상태로 구분한다.
+const cardMoveErrorMessage = (error: unknown) => {
+  const response = (error as { response?: { status?: number; data?: { error?: string } } }).response;
+  if (response?.data?.error) return response.data.error;
+  if (!response) return "서버에 연결할 수 없습니다. 네트워크 상태를 확인해 주세요.";
+  if (response.status === 401) return "Jira 연동이 필요합니다. 상단 메뉴에서 Jira를 다시 연동해 주세요.";
+  if (response.status === 403) return "이 프로젝트나 Jira 이슈에 대한 권한이 없습니다.";
+  if (response.status === 404) return "프로젝트 또는 Jira 이슈를 찾을 수 없습니다.";
+  return `알 수 없는 오류가 발생했습니다. (HTTP ${response.status})`;
+};
+
 const isEpicTask = (task: KanbanTask) => {
   const issueType = (task.issueType || "").toLowerCase();
   return (
@@ -110,6 +121,8 @@ export default function KanbanBoardPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [draggingTask, setDraggingTask] = useState<KanbanTask | null>(null);
+  // 드래그 중 마우스가 올라가 있는 컬럼. 이 컬럼에만 삽입 위치 표시선을 그린다.
+  const [dragOverColumnId, setDragOverColumnId] = useState<KanbanColumnId | null>(null);
   const [canManageJira, setCanManageJira] = useState(false);
   const [jiraParentOptions, setJiraParentOptions] = useState<JiraParentOption[]>([]);
 
@@ -284,15 +297,20 @@ export default function KanbanBoardPage() {
     }
     setTasks(next);
 
+    // 어느 단계에서 실패했는지에 따라 롤백 범위와 안내 문구가 달라진다.
+    let stage: "status" | "rank" = "status";
+    let statusChanged = false;
     try {
       // 2) 컬럼(상태)이 바뀌었으면 상태 전환
       if (fromColumnId !== targetColumnId) {
         const targetStatusNames =
           boardColumns.find((c) => c.id === targetColumnId)?.statusNames || [];
         await updateProjectJiraIssueStatus(projectId, task.code, targetColumnId, targetStatusNames);
+        statusChanged = true;
       }
 
       // 3) 순서(Rank) 반영 — 같은 컬럼 안 이웃 기준
+      stage = "rank";
       const columnTasks = next.filter((t) => t.columnId === targetColumnId);
       const idx = columnTasks.findIndex((t) => t.id === task.id);
       const belowNeighbor = columnTasks[idx + 1]; // 내 아래 카드
@@ -304,24 +322,31 @@ export default function KanbanBoardPage() {
         await rankProjectJiraIssue(projectId, task.code, { afterIssueKey: aboveNeighbor.code });
       }
     } catch (error) {
-      console.error("카드 이동 실패:", error);
+      console.error(`카드 이동 실패(${stage}):`, error);
+      const reason = cardMoveErrorMessage(error);
+
+      if (stage === "rank" && statusChanged) {
+        // 상태는 Jira에 이미 반영됐으므로 컬럼은 그대로 두고 순서만 실패했음을 알린다.
+        alert(`상태는 변경됐지만 순서 변경에 실패했습니다.\n${reason}`);
+        return;
+      }
+
       setTasks(snapshot); // 롤백
-      alert("카드 이동에 실패했습니다.");
+      alert(
+        stage === "status"
+          ? `카드 상태를 변경하지 못했습니다.\n${reason}`
+          : `카드 순서를 변경하지 못했습니다.\n${reason}`,
+      );
     }
   };
 
-  const handleDropOnCard = (targetTask: KanbanTask) => {
+  // KanbanColumn이 표시선 위치로 계산한 자리: beforeTask 앞(null이면 컬럼 맨 끝)
+  const handleDropAt = (columnId: KanbanColumnId, beforeTask: KanbanTask | null) => {
     const task = draggingTask;
     setDraggingTask(null);
-    if (!task || task.id === targetTask.id) return;
-    reorderAndPersist(task, targetTask.columnId, targetTask);
-  };
-
-  const handleDropOnColumn = (columnId: KanbanColumnId) => {
-    const task = draggingTask;
-    setDraggingTask(null);
-    if (!task) return;
-    reorderAndPersist(task, columnId, null);
+    setDragOverColumnId(null);
+    if (!task || task.id === beforeTask?.id) return;
+    reorderAndPersist(task, columnId, beforeTask);
   };
 
   // ─── [BUG FIX] handleCardDragStart / handleCardDragEnd 선언 추가 ─────────
@@ -331,10 +356,12 @@ export default function KanbanBoardPage() {
   // ─────────────────────────────────────────────────────────────────────────
   const handleCardDragStart = (task: KanbanTask) => {
     setDraggingTask(task);
+    setDragOverColumnId(null);
   };
 
   const handleCardDragEnd = () => {
     setDraggingTask(null);
+    setDragOverColumnId(null);
   };
 
   const submitTask = async () => {
@@ -480,8 +507,9 @@ export default function KanbanBoardPage() {
             onEditTask={openEditModal}
             onCardDragStart={handleCardDragStart}
             onCardDragEnd={handleCardDragEnd}
-            onDropOnColumn={handleDropOnColumn}
-            onDropOnCard={handleDropOnCard}
+            onDropAt={handleDropAt}
+            isDropTarget={dragOverColumnId === column.id}
+            onColumnDragOver={setDragOverColumnId}
             draggingTaskId={draggingTask?.id ?? null}
             canManage={canManageJira}
           />

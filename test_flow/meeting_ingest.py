@@ -92,14 +92,18 @@ def make_chunks(req: Any, result: dict[str, Any]) -> list[dict[str, Any]]:
     metadata = base_metadata(req, result)
     meeting_id = metadata["meeting_id"] or "unknown"
     chunks: list[dict[str, Any]] = []
+    # 문서 청크처럼 회의 제목·일시를 본문 앞에 붙여 "지난주 OO 회의" 같은 질문이 검색되게 한다.
+    header = f"[회의: {metadata['title']} / {metadata['meeting_datetime']}]"
+    section_labels = {"meeting_summary": "요약", "meeting_document": "회의록 본문", "meeting_todo": "할 일"}
 
     def append_section(section_type: str, text: str) -> None:
+        label = section_labels.get(section_type, section_type)
         for index, chunk_text in enumerate(split_text(text), 1):
             chunk_id = f"meeting::{meeting_id}::{section_type}::{index:04d}"
             chunks.append(
                 {
                     "chunk_id": chunk_id,
-                    "document": chunk_text,
+                    "document": f"{header}\n[항목: {label}]\n\n{chunk_text}",
                     "metadata": {
                         **metadata,
                         "chunk_type": section_type,
@@ -148,15 +152,9 @@ def upsert_meeting_chunks(chunks: list[dict[str, Any]], *, collection_name: str 
     collection = collection_name or qdrant_collection_for_project(
         metadata.get("project_id") if isinstance(metadata, dict) else None
     )
-    try:
-        exists = bool(client.collection_exists(collection))
-    except AttributeError:
-        exists = collection in {item.name for item in client.get_collections().collections}
-    if not exists:
-        client.create_collection(
-            collection_name=collection,
-            vectors_config=models.VectorParams(size=bundle.dimensions, distance=models.Distance.COSINE),
-        )
+    from qdrant_schema import ensure_collection
+
+    ensure_collection(client, models, collection, bundle.dimensions)
 
     ensure_payload_indexes(client, collection)
     meeting_id = str(chunks[0].get("metadata", {}).get("meeting_id") or "")

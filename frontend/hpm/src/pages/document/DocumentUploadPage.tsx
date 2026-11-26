@@ -48,13 +48,16 @@ export default function DocumentUploadPage() {
     if (files.length === 0) return;
 
     const maxFiles = config?.max_files ?? DEFAULT_MAX_FILES;
+    const allowedExtensions = config?.allowed_formats?.length
+      ? new Set(config.allowed_formats.map((format) => format.toLowerCase()))
+      : DOCUMENT_ALLOWED_EXTENSIONS;
     if (uploadedDocuments.length + files.length > maxFiles) {
       setModal(messages.entry);
       return;
     }
 
     for (const file of files) {
-      if (!DOCUMENT_ALLOWED_EXTENSIONS.has(getExtension(file.name))) {
+      if (!allowedExtensions.has(getExtension(file.name))) {
         setModal(messages.unsupported_format);
         return;
       }

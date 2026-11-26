@@ -121,7 +121,22 @@ def rank_jira_issue(
                 error_detail = e.response.json()
             except Exception:
                 error_detail = e.response.text
-        return {"success": False, "error": str(e), "detail": error_detail}
+        return {
+            "success": False,
+            "reason": "rank_failed",
+            "jira_messages": jira_error_messages(error_detail),
+            "error": str(e),
+            "detail": error_detail,
+        }
+
+
+def jira_error_messages(error_detail) -> list[str]:
+    """Jira 오류 응답({"errorMessages": [...], "errors": {...}})에서 사람이 읽을 메시지만 꺼낸다."""
+    if not isinstance(error_detail, dict):
+        return []
+    messages = [str(m) for m in error_detail.get("errorMessages") or [] if m]
+    messages += [f"{field}: {msg}" for field, msg in (error_detail.get("errors") or {}).items() if msg]
+    return messages
 
 
 def get_jira_config():
@@ -259,12 +274,14 @@ def update_jira_issue_status(
     target_status_names: list[str] | None = None,
 ) -> dict:
 
+    # 실패 시 reason으로 원인을 구분한다:
+    # unknown_column / transitions_fetch_failed / transition_not_found / transition_failed
     transition_name = COLUMN_TO_TRANSITION_NAME.get(column_id)
     if not transition_name and target_status_names:
         transition_name = target_status_names[0]
     if not transition_name:
-        return {"success" : False, "error" : f"알 수 없는 column_id: {column_id}"}
-    
+        return {"success" : False, "reason" : "unknown_column", "error" : f"알 수 없는 column_id: {column_id}"}
+
     headers = {
         "Authorization" : f"Bearer {access_token}",
         "Content-Type" : "application/json",
@@ -279,8 +296,14 @@ def update_jira_issue_status(
         transitions =  trans_response.json().get("transitions" ,[])
 
     except requests.RequestException as e:
-        return {"success" : False, "error" : f"transition 조회 실패: {str(e)}"}
-    
+        response = getattr(e, "response", None)
+        return {
+            "success" : False,
+            "reason" : "transitions_fetch_failed",
+            "jira_status" : response.status_code if response is not None else None,
+            "error" : f"transition 조회 실패: {str(e)}",
+        }
+
     status_names = target_status_names or COLUMN_TO_STATUS_NAMES.get(column_id, [transition_name])
     desired_names = {name.lower() for name in status_names if name}
     transition_id = None
@@ -292,11 +315,30 @@ def update_jira_issue_status(
             break
 
     if not transition_id:
+        # 워크플로우상 현재 상태에서 갈 수 없는 상태다. 사용자 안내용으로 현재 상태와 갈 수 있는 상태를 함께 돌려준다.
+        current_status = ""
+        try:
+            issue_response = requests.get(
+                f"https://api.atlassian.com/ex/jira/{cloud_id}/rest/api/3/issue/{issue_key}?fields=status",
+                headers=headers,
+                timeout=10,
+            )
+            if issue_response.ok:
+                current_status = ((issue_response.json().get("fields") or {}).get("status") or {}).get("name", "")
+        except requests.RequestException:
+            pass
+
         return {
             "success" : False,
+            "reason" : "transition_not_found",
+            "target_status" : transition_name,
+            "current_status" : current_status,
+            "available_statuses" : [
+                (t.get("to") or {}).get("name") or t.get("name") for t in transitions
+            ],
             "error" : f"'{transition_name}' transition을 찾을 수 없습니다. Jira 워크플로우를 확인하세요."
         }
-    
+
     try:
         exec_response = requests.post(
             transitions_url,
@@ -306,7 +348,7 @@ def update_jira_issue_status(
         )
         exec_response.raise_for_status()
         return {"success" : True, "issue_key" : issue_key, "new_column" : column_id}
-    
+
     except requests.RequestException as e:
         error_detail = ""
         if hasattr(e, "response") and e.response is not None:
@@ -315,7 +357,14 @@ def update_jira_issue_status(
             except Exception:
                 error_detail = e.response.text
 
-        return {"success" : False, "error" : str(e), "detail" : error_detail}
+        return {
+            "success" : False,
+            "reason" : "transition_failed",
+            "target_status" : transition_name,
+            "jira_messages" : jira_error_messages(error_detail),
+            "error" : str(e),
+            "detail" : error_detail,
+        }
     
 
 def delete_jira_issue(issue_key: str, access_token: str, cloud_id: str) -> dict:

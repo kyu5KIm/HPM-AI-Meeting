@@ -10,9 +10,12 @@ import uuid
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse
+from openai import BadRequestError
 from starlette.concurrency import run_in_threadpool
 
 from config import (
+    MAX_AUDIO_UPLOAD_MB,
+    MAX_DOCUMENT_UPLOAD_MB,
     OCR_JOB_WORKERS,
     OCR_MODEL_ID,
     STT_BATCH_SIZE,
@@ -24,9 +27,13 @@ from config import (
 from model_runtime import cleanup_cuda, ocr_file_bytes, transcribe_audio_file
 from schemas import TextResponse
 from term_correction import apply_stt_term_corrections, merge_term_corrections
+from upload_limits import read_upload
 
 
 router = APIRouter()
+
+# 업로드 내용이 잘못된 경우(손상 파일, 없는 언어 코드 등). 서버 오류가 아니므로 400으로 돌려준다.
+INVALID_INPUT_ERRORS = (ValueError, BadRequestError)
 
 STT_JOBS: dict[str, dict[str, Any]] = {}
 OCR_JOBS: dict[str, dict[str, Any]] = {}
@@ -223,7 +230,7 @@ async def create_stt_job(
     batch_size: int = Form(STT_BATCH_SIZE),
     participants: str = Form(""),
 ) -> dict[str, Any]:
-    file_bytes = await file.read()
+    file_bytes = await read_upload(file, MAX_AUDIO_UPLOAD_MB)
     if not file_bytes:
         raise HTTPException(status_code=400, detail=f"Uploaded file is empty: {file.filename or ''}")
     job_id = uuid.uuid4().hex
@@ -271,19 +278,22 @@ async def stt(
     batch_size: int = Form(STT_BATCH_SIZE),
     participants: str = Form(""),
 ) -> str:
-    file_bytes = await file.read()
+    file_bytes = await read_upload(file, MAX_AUDIO_UPLOAD_MB)
     if not file_bytes:
         raise HTTPException(status_code=400, detail=f"Uploaded file is empty: {file.filename or ''}")
-    payload = await run_in_threadpool(
-        transcribe_audio_bytes,
-        file_bytes,
-        file.filename or "",
-        language=language,
-        align=align,
-        diarize=diarize,
-        batch_size=batch_size,
-        participants=participants,
-    )
+    try:
+        payload = await run_in_threadpool(
+            transcribe_audio_bytes,
+            file_bytes,
+            file.filename or "",
+            language=language,
+            align=align,
+            diarize=diarize,
+            batch_size=batch_size,
+            participants=participants,
+        )
+    except INVALID_INPUT_ERRORS as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return str(payload.get("text") or "")
 
 
@@ -329,7 +339,7 @@ def _run_ocr_job(job_id: str, file_bytes: bytes, filename: str, content_type: st
 
 @router.post("/ocr/jobs", status_code=202)
 async def create_ocr_job(file: UploadFile = File(...)) -> dict[str, Any]:
-    file_bytes = await file.read()
+    file_bytes = await read_upload(file, MAX_DOCUMENT_UPLOAD_MB)
     if not file_bytes:
         raise HTTPException(status_code=400, detail=f"Uploaded file is empty: {file.filename or ''}")
     job_id = uuid.uuid4().hex
@@ -361,7 +371,10 @@ def get_ocr_job(job_id: str) -> dict[str, Any]:
 
 @router.post("/ocr", response_model=TextResponse)
 async def ocr(file: UploadFile = File(...)) -> TextResponse:
-    file_bytes = await file.read()
+    file_bytes = await read_upload(file, MAX_DOCUMENT_UPLOAD_MB)
     if not file_bytes:
         raise HTTPException(status_code=400, detail=f"Uploaded file is empty: {file.filename or ''}")
-    return await run_in_threadpool(_run_ocr_bytes, file_bytes, file.filename or "", file.content_type or "")
+    try:
+        return await run_in_threadpool(_run_ocr_bytes, file_bytes, file.filename or "", file.content_type or "")
+    except INVALID_INPUT_ERRORS as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
